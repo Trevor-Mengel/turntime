@@ -63,9 +63,9 @@ def generate_static_badge(label: str, value: str, color: str, logo: str = "") ->
     return url
 
 
-def generate_dynamic_badge(gist_id: str, filename: str, period: str = "month") -> str:
+def generate_dynamic_badge(gist_id: str, username: str, filename: str, period: str = "month") -> str:
     """Generate a shields.io dynamic badge URL pointing to a Gist."""
-    gist_url = f"https://gist.githubusercontent.com/{gist_id}/raw/{filename}"
+    gist_url = f"https://gist.githubusercontent.com/{username}/{gist_id}/raw/{filename}"
     label = quote(f"Turn Duration ({period})")
     query = quote(f"$.stats.{period}.avg_seconds")
     return (

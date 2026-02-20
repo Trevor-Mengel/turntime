@@ -24,7 +24,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from parse_sessions import find_claude_dir, find_session_files, parse_session_file, aggregate_turns, build_histogram_data
 from generate_histogram import generate_histogram_svg
-from generate_badges import generate_all_badges, generate_badge_json
+from generate_badges import generate_all_badges, generate_badge_json, format_duration
 
 
 def run_cmd(cmd: list[str], check: bool = True, capture: bool = True) -> subprocess.CompletedProcess:
@@ -68,9 +68,12 @@ def get_github_username(token: str) -> str:
         return ''
 
 
-def create_or_update_gist(token: str, gist_id: str | None, files: dict[str, str],
+def create_or_update_gist(token: str, gist_id: str | None, files: dict[str, str | None],
                           description: str = "turntime stats") -> str:
-    """Create or update a GitHub Gist. Returns the Gist ID."""
+    """Create or update a GitHub Gist. Returns the Gist ID.
+
+    Files with None values are deleted from the Gist (only applies to updates).
+    """
     import urllib.request
 
     headers = {
@@ -79,9 +82,16 @@ def create_or_update_gist(token: str, gist_id: str | None, files: dict[str, str]
         'Content-Type': 'application/json',
     }
 
+    gist_files: dict[str, dict[str, str] | None] = {}
+    for name, content in files.items():
+        if content is None:
+            gist_files[name] = None
+        else:
+            gist_files[name] = {'content': content}
+
     payload = {
         'description': description,
-        'files': {name: {'content': content} for name, content in files.items()},
+        'files': gist_files,
     }
 
     if gist_id:
@@ -305,13 +315,25 @@ def cmd_sync(args):
     # Generate endpoint JSON (for shields.io dynamic badges)
     endpoint_json = generate_badge_json(period_stats)
 
+    # Generate Gist summary (shows in pinned Gist preview)
+    gist_summary = (
+        f"## ⏱ Claude Code Turn Duration\n"
+        f"\n"
+        f"Avg: {format_duration(period_stats.get('avg_seconds', 0))}"
+        f" · Median: {format_duration(period_stats.get('median_seconds', 0))}"
+        f" · P90: {format_duration(period_stats.get('p90_seconds', 0))}\n"
+        f"{period_stats.get('count', 0)} turns {period_labels.get(histogram_period, histogram_period).lower()}\n"
+        f"\n"
+        f"Powered by [turntime](https://github.com/Trevor-Mengel/turntime)\n"
+    )
+
     # Save locally
     output_dir = Path(args.output_dir or '.turntime-output')
     output_dir.mkdir(parents=True, exist_ok=True)
 
     (output_dir / 'turntime-stats.json').write_text(json.dumps(output, indent=2))
     (output_dir / 'turntime-histogram.svg').write_text(svg)
-    (output_dir / 'turntime-badge.json').write_text(json.dumps(endpoint_json, indent=2))
+    (output_dir / 'turntime-shield.json').write_text(json.dumps(endpoint_json, indent=2))
     (output_dir / 'turntime-badges.md').write_text(badges_md)
     print(f"💾 Local output saved to {output_dir}/")
 
@@ -324,14 +346,17 @@ def cmd_sync(args):
     gist_id = config.get('gist_id')
     print(f"🔄 Pushing to Gist {gist_id}...")
 
+    gist_files: dict[str, str | None] = {
+        'README.md': gist_summary,
+        'turntime-stats.json': json.dumps(output, indent=2),
+        'turntime-histogram.svg': svg,
+        'turntime-shield.json': json.dumps(endpoint_json, indent=2),
+    }
+
     gist_id = create_or_update_gist(
         token=token,
         gist_id=gist_id,
-        files={
-            'turntime-stats.json': json.dumps(output, indent=2),
-            'turntime-histogram.svg': svg,
-            'turntime-badge.json': json.dumps(endpoint_json, indent=2),
-        },
+        files=gist_files,
         description='turntime - Claude Code turn duration stats',
     )
     print(f"✅ Gist updated: https://gist.github.com/{gist_id}")

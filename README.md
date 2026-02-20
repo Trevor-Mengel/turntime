@@ -266,7 +266,7 @@ Badges use [shields.io](https://shields.io) with a Tailwind-inspired color palet
 Use the Gist endpoint for auto-updating badges:
 
 ```markdown
-![Turn Duration](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/YOUR_USER/GIST_ID/raw/turntime-badge.json)
+![Turn Duration](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/YOUR_USER/GIST_ID/raw/turntime-shield.json)
 ```
 
 ### Static badges
