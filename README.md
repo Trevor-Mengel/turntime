@@ -16,7 +16,6 @@
     ██║   ██║██║╚██╔╝██║██╔══╝
     ██║   ██║██║ ╚═╝ ██║███████╗
     ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝
-       powered by Claude Code
 ```
 
 **Track and display your Claude Code turn duration on your GitHub profile.**
