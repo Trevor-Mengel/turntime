@@ -274,8 +274,7 @@ def cmd_sync(args):
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     stats = aggregate_turns(all_turns, now)
-    histogram_period = args.period or config.get('histogram_period', 'month')
-    histogram_data = build_histogram_data(all_turns, histogram_period, now)
+    histogram_data = build_histogram_data(all_turns, num_weeks=12, now=now)
 
     # Build full output
     output = {
@@ -285,16 +284,12 @@ def cmd_sync(args):
         'histogram': histogram_data,
     }
 
-    # Generate SVG
-    period_labels = {
-        'today': 'Today', 'week': 'This Week', 'month': 'This Month',
-        'quarter': 'This Quarter', 'year': 'This Year', 'all': 'All Time',
-    }
-    period_stats = stats.get(histogram_period, stats.get('all', {}))
+    # Generate SVG (always last 12 weeks, stats from 'all' period)
+    period_stats = stats.get('all', {})
     svg = generate_histogram_svg(
         histogram_data=histogram_data,
         stats=period_stats,
-        period_label=period_labels.get(histogram_period, histogram_period),
+        period_label='Last 12 Weeks',
         theme=args.theme or 'dark',
     )
 
@@ -302,6 +297,7 @@ def cmd_sync(args):
     badges = generate_all_badges(output, config)
     badge_periods = args.badge_periods or config.get('badge_periods', ['week', 'all'])
     badge_md_lines = ["<!-- turntime badges -->"]
+    badge_md_lines.append("### Avg. Turn Duration (Claude Code)")
     for p in badge_periods:
         if p in badges:
             badge_md_lines.append(badges[p]['markdown'])
@@ -382,6 +378,10 @@ def cmd_sync(args):
                 print(f"⚠️  Could not push: {e}")
 
     # Print summary
+    period_labels = {
+        'today': 'Today', 'week': 'This Week', 'month': 'This Month',
+        'quarter': 'This Quarter', 'year': 'This Year', 'all': 'All Time',
+    }
     print(f"\n📊 Summary:")
     for p in badge_periods:
         if p in stats:

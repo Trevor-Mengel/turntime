@@ -342,55 +342,61 @@ def aggregate_turns(turns: list[Turn], now: Optional[datetime] = None) -> dict:
     return {k: v.to_dict() for k, v in periods.items()}
 
 
-def build_histogram_data(turns: list[Turn], period: str = 'month',
+def build_histogram_data(turns: list[Turn], num_weeks: int = 12,
                          now: Optional[datetime] = None) -> list[dict]:
-    """Build histogram bucket data for chart generation."""
+    """Build weekly time-series data for chart generation.
+
+    Groups turns by ISO week (Monday-start) and computes the average
+    duration for each of the last ``num_weeks`` weeks.  Weeks with no
+    turns are included with avg_seconds=0 so the chart always shows
+    the full range.
+    """
     if now is None:
         now = datetime.now(timezone.utc)
 
-    # Define bins (in seconds)
-    bins = [
-        (0, 15, "<15s"),
-        (15, 30, "15-30s"),
-        (30, 60, "30-60s"),
-        (60, 120, "1-2m"),
-        (120, 300, "2-5m"),
-        (300, 600, "5-10m"),
-        (600, 1200, "10-20m"),
-        (1200, 1800, "20-30m"),
-        (1800, 3600, "30-60m"),
-        (3600, 7200, "1-2h"),
-        (7200, float('inf'), ">2h"),
-    ]
-
-    # Filter turns by period
+    # Monday of the current week (start of day, UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    boundaries = {
-        'day': today_start,
-        'week': today_start - timedelta(days=now.weekday()),
-        'month': today_start.replace(day=1),
-        'quarter': today_start.replace(month=((now.month - 1) // 3) * 3 + 1, day=1),
-        'year': today_start.replace(month=1, day=1),
-        'all': datetime.min.replace(tzinfo=timezone.utc),
-    }
-    cutoff = boundaries.get(period, boundaries['month'])
+    current_week_start = today_start - timedelta(days=now.weekday())
 
-    filtered = []
+    # Build list of week-start Mondays (oldest first)
+    week_starts: list[datetime] = []
+    for i in range(num_weeks - 1, -1, -1):
+        week_starts.append(current_week_start - timedelta(weeks=i))
+
+    # Bucket turns into weeks
+    week_durations: dict[str, list[float]] = {}
+    for ws in week_starts:
+        key = ws.strftime('%Y-%m-%d')
+        week_durations[key] = []
+
+    cutoff = week_starts[0]
     for t in turns:
         ts = _parse_ts(t.user_timestamp)
-        if ts and (ts.tzinfo is None and ts.replace(tzinfo=timezone.utc) >= cutoff
-                   or ts.tzinfo and ts >= cutoff):
-            filtered.append(t.duration_seconds)
+        if ts is None:
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ts < cutoff:
+            continue
+        # Find which week this turn belongs to
+        turn_week_start = ts - timedelta(days=ts.weekday())
+        turn_week_start = turn_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        key = turn_week_start.strftime('%Y-%m-%d')
+        if key in week_durations:
+            week_durations[key].append(t.duration_seconds)
 
-    # Count per bin
+    # Build result list
     result = []
-    for lo, hi, label in bins:
-        count = sum(1 for d in filtered if lo <= d < hi)
+    for ws in week_starts:
+        key = ws.strftime('%Y-%m-%d')
+        durations = week_durations[key]
+        avg = sum(durations) / len(durations) if durations else 0
+        # Label: "Mon D" format (e.g. "Feb 3")
+        label = ws.strftime('%b %-d')
         result.append({
             'bin': label,
-            'lo': lo,
-            'hi': hi,
-            'count': count,
+            'avg_seconds': round(avg, 1),
+            'count': len(durations),
         })
 
     return result
@@ -418,9 +424,8 @@ def main():
         help='Output format: stats, turns, histogram, or full (default: full)'
     )
     parser.add_argument(
-        '--histogram-period', choices=['day', 'week', 'month', 'quarter', 'year', 'all'],
-        default='month',
-        help='Time period for histogram data (default: month)'
+        '--num-weeks', type=int, default=12,
+        help='Number of weeks for histogram time-series (default: 12)'
     )
     parser.add_argument(
         '--verbose', '-v', action='store_true',
@@ -460,7 +465,7 @@ def main():
         output['recent_turns'] = [asdict(t) for t in recent]
 
     if args.format in ('histogram', 'full'):
-        output['histogram'] = build_histogram_data(all_turns, args.histogram_period, now)
+        output['histogram'] = build_histogram_data(all_turns, num_weeks=args.num_weeks, now=now)
 
     # Output
     json_str = json.dumps(output, indent=2, default=str)

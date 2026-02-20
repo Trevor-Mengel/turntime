@@ -43,7 +43,7 @@ def format_duration(seconds: float) -> str:
         return f"{seconds:.1f}s"
     minutes = seconds / 60
     if minutes < 60:
-        return f"{minutes:.1f}m"
+        return f"{minutes:.1f}mins"
     hours = minutes / 60
     return f"{hours:.1f}h"
 
@@ -56,29 +56,25 @@ def _xml_escape(text: str) -> str:
 def generate_histogram_svg(
     histogram_data: list[dict],
     stats: dict,
-    period_label: str = "This Month",
+    period_label: str = "Last 12 Weeks",
     theme: str = "auto",
     width: int = 840,
     height: int = 320,
 ) -> str:
-    """Generate an SVG histogram chart."""
+    """Generate an SVG weekly time-series chart."""
 
     # Chart dimensions
     margin_top = 60
     margin_right = 30
     margin_bottom = 60
-    margin_left = 50
+    margin_left = 60
     chart_w = width - margin_left - margin_right
     chart_h = height - margin_top - margin_bottom
 
-    # Filter out empty trailing bins
-    while histogram_data and histogram_data[-1]['count'] == 0:
-        histogram_data = histogram_data[:-1]
-
     if not histogram_data:
-        histogram_data = [{'bin': 'No data', 'count': 0, 'lo': 0, 'hi': 0}]
+        histogram_data = [{'bin': 'No data', 'avg_seconds': 0, 'count': 0}]
 
-    max_count = max(d['count'] for d in histogram_data) or 1
+    max_avg = max(d.get('avg_seconds', 0) for d in histogram_data) or 1
     n_bins = len(histogram_data)
     bar_gap = 4
     bar_width = max(12, (chart_w - bar_gap * (n_bins - 1)) / n_bins)
@@ -93,36 +89,35 @@ def generate_histogram_svg(
 
     def make_chart(colors: dict, scheme_id: str = "") -> str:
         """Generate chart SVG content for a specific theme."""
-        prefix = f"{scheme_id}-" if scheme_id else ""
-
         bars = []
         labels = []
         for i, d in enumerate(histogram_data):
+            avg_s = d.get('avg_seconds', 0)
             x = margin_left + offset_x + i * (bar_width + bar_gap)
-            bar_h = (d['count'] / max_count) * chart_h if max_count > 0 else 0
-            # Ensure non-zero counts get a minimum visible bar height
-            if d['count'] > 0 and bar_h < 2:
+            bar_h = (avg_s / max_avg) * chart_h if max_avg > 0 else 0
+            # Ensure non-zero values get a minimum visible bar height
+            if avg_s > 0 and bar_h < 2:
                 bar_h = 2
             y = margin_top + chart_h - bar_h
             radius = min(4, bar_width / 4)
 
             # Bar with rounded top corners
             if bar_h > 0:
+                avg_fmt = format_duration(avg_s)
                 bars.append(
                     f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_width:.1f}" '
                     f'height="{bar_h:.1f}" rx="{radius}" fill="{colors["bar"]}" '
                     f'opacity="0.9">'
-                    f'<title>{_xml_escape(d["bin"])}: {d["count"]} turns</title>'
+                    f'<title>{_xml_escape(d["bin"])}: {avg_fmt} avg ({d["count"]} turns)</title>'
                     f'</rect>'
                 )
-                # Count label above bar
-                if d['count'] > 0:
-                    bars.append(
-                        f'<text x="{x + bar_width / 2:.1f}" y="{y - 6:.1f}" '
-                        f'text-anchor="middle" fill="{colors["text_secondary"]}" '
-                        f'font-size="11" font-family="ui-monospace,monospace">'
-                        f'{d["count"]}</text>'
-                    )
+                # Duration label above bar
+                bars.append(
+                    f'<text x="{x + bar_width / 2:.1f}" y="{y - 6:.1f}" '
+                    f'text-anchor="middle" fill="{colors["text_secondary"]}" '
+                    f'font-size="10" font-family="ui-monospace,monospace">'
+                    f'{avg_fmt}</text>'
+                )
 
             # X-axis label
             labels.append(
@@ -133,12 +128,12 @@ def generate_histogram_svg(
                 f'{_xml_escape(d["bin"])}</text>'
             )
 
-        # Y-axis grid lines
+        # Y-axis grid lines with duration labels
         grid_lines = []
         n_grid = 4
         for i in range(n_grid + 1):
             y = margin_top + chart_h - (i / n_grid) * chart_h
-            val = int(max_count * i / n_grid)
+            val_seconds = max_avg * i / n_grid
             grid_lines.append(
                 f'<line x1="{margin_left}" y1="{y:.1f}" '
                 f'x2="{width - margin_right}" y2="{y:.1f}" '
@@ -148,7 +143,8 @@ def generate_histogram_svg(
                 grid_lines.append(
                     f'<text x="{margin_left - 8}" y="{y + 4:.1f}" '
                     f'text-anchor="end" fill="{colors["text_secondary"]}" '
-                    f'font-size="11" font-family="ui-monospace,monospace">{val}</text>'
+                    f'font-size="11" font-family="ui-monospace,monospace">'
+                    f'{format_duration(val_seconds)}</text>'
                 )
 
         # Stats header
@@ -179,7 +175,7 @@ def generate_histogram_svg(
         {''.join(labels)}
         <text x="{margin_left}" y="22" fill="{colors['title']}" font-size="16" font-weight="600"
               font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
-            ⏱ Turn Duration · {period_label}
+            ⏱ Avg. Turn Duration · {period_label}
         </text>
         {''.join(stat_elements)}
         <text x="{width - margin_right}" y="{height - 8}" text-anchor="end"
@@ -239,7 +235,7 @@ def main():
     )
     parser.add_argument(
         '--period', type=str, default=None,
-        help='Stats period key to display (default: month). Options: today, week, month, quarter, year, all'
+        help='Stats period key for header metrics (default: all). Options: today, week, month, quarter, year, all'
     )
     parser.add_argument(
         '--width', type=int, default=840,
@@ -266,18 +262,10 @@ def main():
     histogram = data.get('histogram', [])
     stats_all = data.get('stats', {})
 
-    # Pick the stats period
-    period_key = args.period or 'month'
+    # Pick the stats period for header metrics
+    period_key = args.period or 'all'
     stats = stats_all.get(period_key, stats_all.get('all', {}))
-    period_labels = {
-        'today': 'Today',
-        'week': 'This Week',
-        'month': 'This Month',
-        'quarter': 'This Quarter',
-        'year': 'This Year',
-        'all': 'All Time',
-    }
-    period_label = period_labels.get(period_key, period_key)
+    period_label = 'Last 12 Weeks'
 
     svg = generate_histogram_svg(
         histogram_data=histogram,

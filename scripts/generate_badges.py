@@ -18,7 +18,7 @@ def format_duration(seconds: float) -> str:
         return f"{seconds:.1f}s"
     minutes = seconds / 60
     if minutes < 60:
-        return f"{minutes:.1f}m"
+        return f"{minutes:.1f}mins"
     hours = minutes / 60
     return f"{hours:.1f}h"
 
