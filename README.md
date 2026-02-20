@@ -1,8 +1,10 @@
 # ⏱ turntime
 
-**Track and display your Claude Code turn duration on your GitHub profile.**
+**Your Claude Code turn duration, worn like a badge of honor.**
 
-turntime parses your local Claude Code session logs, calculates how long each prompt→response turn takes, and generates beautiful badges and histogram charts you can embed in your GitHub profile README — updated automatically on a schedule.
+Some developers count commits. Others flex deployment streaks. You? You measure how long Claude actually *thinks* before it answers — because anyone can fire off a one-liner, but it takes a real one to architect a 20-minute, 47-tool-call odyssey.
+
+turntime parses your local Claude Code session logs, calculates how long each prompt→response turn takes, and generates badges and histogram charts you can slap on your GitHub profile. It updates automatically, so your flex stays fresh.
 
 <picture>
   <img src="assets/example-histogram.svg" alt="Example turn duration histogram" />
@@ -16,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/Trevor-Mengel/turntime/main/setup.s
 
 This clones turntime to `~/.local/share/turntime` and adds a `turntime` command to your PATH.
 
-Or clone manually:
+Or clone manually (we don't judge):
 
 ```bash
 git clone https://github.com/Trevor-Mengel/turntime.git
@@ -26,18 +28,24 @@ python3 scripts/turntime_cli.py stats
 
 ## What it measures
 
-**Turn duration** = the time from when you send a prompt to when Claude finishes its complete response (including all tool uses).
+**Turn duration** = the time from when you hit enter to when Claude finishes its complete response, including every tool call, file read, test run, and existential crisis in between.
 
-A "turn" starts when you send a prompt (a genuine human message) and ends when Claude finishes its complete response — including all tool-use cycles. In the Claude API, tool results are sent as `user` messages with `tool_result` content blocks; turntime correctly identifies and skips these, so multi-step tool chains (read file → edit → run tests → respond) count as a single turn, not many. Subagent processes (background Task tool spawns) are excluded — only direct Claude Code sessions are measured. Turns shorter than 5 seconds (likely short terminal commands like `git push` or quick confirmations) are filtered out; there is no upper cap.
+A "turn" starts when you send a prompt and ends when Claude delivers its final response — spanning all intermediate tool-use cycles. So when Claude reads 14 files, edits 3, runs the test suite twice, and then rewrites half of it because the linter complained? That's one turn. *Your* turn.
+
+The technical details, for the curious:
+- Tool results (`user` messages with `tool_result` content blocks) are correctly identified and skipped — multi-step tool chains count as a single turn, not dozens of micro-turns
+- Subagent processes (background Task tool spawns) are excluded — only your direct sessions count
+- Turns under 5 seconds are filtered out (sorry, `git push` doesn't count as deep work)
+- There is no upper cap, because we respect the grind
 
 ## Quick start
 
 ```bash
-# View your stats immediately (no setup needed)
+# See what you're working with
 turntime stats
 ```
 
-You'll see a table like this:
+You'll see something like this:
 
 ```
 ⏱  turntime stats (712 turns from 108 sessions)
@@ -49,6 +57,8 @@ This Week          503.2s    99.6s  1251.3s     4.2s 12395.8s      210
 This Month         376.4s    52.4s   645.5s     0.6s 22822.4s      648
 All Time           412.1s    53.4s   661.5s     0.6s 24853.5s      712
 ```
+
+Yes, that P90 is 21 minutes. No, we will not be taking questions at this time.
 
 ## Setup for GitHub profile
 
@@ -70,7 +80,7 @@ This will:
 turntime sync
 ```
 
-This parses your logs, generates a histogram SVG and badge data, and pushes everything to your Gist.
+This parses your logs, generates a histogram SVG and badge data, and pushes everything to your Gist. Run it whenever you want the world to see your latest numbers.
 
 ### 3. Add to your profile README
 
@@ -84,7 +94,7 @@ Add these placeholder comments to your GitHub profile `README.md`:
 <!-- /turntime histogram -->
 ```
 
-Then run `turntime sync` — it will fill these in with your actual badges and histogram.
+Then run `turntime sync` — it will fill these in with your actual badges and histogram. Instant clout.
 
 ### 4. Automate updates
 
@@ -179,23 +189,23 @@ Config is stored at `~/.config/turntime/config.json`:
 
 ### Badge examples
 
-**Default** — weekly average with delta vs all-time, `for-the-badge` style:
+**Default** — weekly average with delta vs all-time:
 ```json
 { "badge_periods": ["week", "all"], "badge_metric": "avg", "badge_delta": true }
 ```
 > ![⏱ This Week](https://img.shields.io/badge/⏱%20This%20Week-8.2m%20▲15%25-6366f1?style=for-the-badge) ![⏱ All Time](https://img.shields.io/badge/⏱%20All%20Time-7.2m-6366f1?style=for-the-badge)
 
-**Median-focused** — show median instead of average:
+**Median-focused** — for the statistically honest:
 ```json
 { "badge_periods": ["week", "all"], "badge_metric": "median" }
 ```
 
-**No delta** — just the raw durations:
+**No delta** — just the raw numbers, no excuses:
 ```json
 { "badge_periods": ["today", "month", "all"], "badge_delta": false }
 ```
 
-**Flat-square style** — compact badges:
+**Flat-square style** — for minimalists who still want credit:
 ```json
 { "badge_style": "flat-square" }
 ```
@@ -219,20 +229,22 @@ turntime **never** reads your prompts or code. It only extracts:
 - Tool use counts (for optional complexity metrics)
 - Session IDs and project directory names
 
-No prompt content, code, or file paths from your sessions are ever included in the output.
+Your brilliant prompts and questionable variable names stay between you and Claude.
 
-## Badge customization
+## Badge colors
 
-Badges use [shields.io](https://shields.io) with a Tailwind-inspired color palette. Longer turns = deeper AI-assisted work, so the progression rewards sustained sessions:
+Badges use [shields.io](https://shields.io) with a Tailwind-inspired color palette. Longer turns = deeper work = more impressive badge. Think of it like a belt system, but for people who talk to AI for a living.
 
-| Duration | Color | Hex |
-|----------|-------|-----|
-| < 2m | ⚫ Slate | `#475569` |
-| 2–5m | 🟡 Amber | `#f59e0b` |
-| 5–10m | 🟢 Teal | `#14b8a6` |
-| 10–20m | 🔵 Indigo | `#6366f1` |
-| 20–40m | 🟣 Fuchsia | `#d946ef` |
-| ≥ 40m | ⚪ White | `#ffffff` |
+| Duration | Rank | Color | Hex |
+|----------|------|-------|-----|
+| < 2m | Casual | ⚫ Slate | `#475569` |
+| 2–5m | Warming Up | 🟡 Amber | `#f59e0b` |
+| 5–10m | Solid | 🟢 Teal | `#14b8a6` |
+| 10–20m | Deep Work | 🔵 Indigo | `#6366f1` |
+| 20–40m | Marathon | 🟣 Fuchsia | `#d946ef` |
+| ≥ 40m | Legendary | ⚪ White | `#ffffff` |
+
+If your badge is white, you're either building something incredible or you forgot to close the session. Either way, respect.
 
 ### Dynamic badges (recommended)
 
@@ -264,10 +276,11 @@ The SVG histogram supports GitHub's automatic dark/light theme via `prefers-colo
 - Claude Code installed (with at least one session in `~/.claude/projects/`)
 - `gh` CLI or `GITHUB_TOKEN` environment variable (for Gist sync)
 - No external Python dependencies — uses only the standard library
+- An unhealthy relationship with your AI coding assistant (optional but likely)
 
 ## Roadmap
 
-- [ ] Global and regional leaderboards
+- [ ] Global and regional leaderboards (yes, it's a competition now)
 - [ ] Public website for leaderboard display
 - [ ] `pip install turntime` package distribution
 - [ ] Additional metrics (tokens/turn, tool uses/turn, complexity score)
