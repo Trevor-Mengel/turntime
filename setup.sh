@@ -1,6 +1,6 @@
 #!/bin/bash
 # turntime - Quick setup script
-# Usage: curl -fsSL https://raw.githubusercontent.com/YOUR_USER/turntime/main/setup.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/Trevor-Mengel/turntime/main/setup.sh | bash
 
 set -e
 
@@ -37,7 +37,7 @@ if [ -d "$TURNTIME_DIR" ]; then
 else
     echo "📦 Cloning turntime..."
     mkdir -p "$(dirname "$TURNTIME_DIR")"
-    git clone --quiet https://github.com/YOUR_USER/turntime.git "$TURNTIME_DIR"
+    git clone --quiet https://github.com/Trevor-Mengel/turntime.git "$TURNTIME_DIR"
 fi
 
 # Create symlink

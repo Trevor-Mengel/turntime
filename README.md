@@ -23,7 +23,7 @@ A "turn" starts when a `user` message is logged and ends at the final `assistant
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USER/turntime.git
+git clone https://github.com/Trevor-Mengel/turntime.git
 cd turntime
 
 # View your stats immediately (no setup needed)
@@ -199,7 +199,7 @@ Badges use [shields.io](https://shields.io) and are color-coded by average durat
 If you use the Gist-based setup, your badges update automatically:
 
 ```markdown
-![Turn Duration](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/YOUR_USER/GIST_ID/raw/turntime-badge.json)
+![Turn Duration](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Trevor-Mengel/GIST_ID/raw/turntime-badge.json)
 ```
 
 ### Static badges
