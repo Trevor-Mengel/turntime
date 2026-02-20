@@ -30,7 +30,7 @@ def duration_color(seconds: float) -> str:
     palette progresses from neutral to increasingly vibrant, rewarding
     sustained sessions.  Hex values are Tailwind-inspired:
 
-      < 2 min  = slate-400   (#94a3b8)  — quick / routine
+      < 2 min  = slate-600   (#475569)  — quick / routine
       < 5 min  = amber-500   (#f59e0b)  — warming up
       < 10 min = teal-500    (#14b8a6)  — solid session
       < 20 min = indigo-500  (#6366f1)  — deep work
@@ -40,7 +40,7 @@ def duration_color(seconds: float) -> str:
     if seconds == 0:
         return "lightgrey"
     if seconds < 120:
-        return "94a3b8"
+        return "475569"
     if seconds < 300:
         return "f59e0b"
     if seconds < 600:

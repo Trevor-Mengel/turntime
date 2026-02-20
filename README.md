@@ -227,9 +227,9 @@ Badges use [shields.io](https://shields.io) with a Tailwind-inspired color palet
 
 | Duration | Color | Hex |
 |----------|-------|-----|
-| < 2m | ⚪ Slate | `#94a3b8` |
+| < 2m | ⚫ Slate | `#475569` |
 | 2–5m | 🟡 Amber | `#f59e0b` |
-| 5–10m | 🩵 Teal | `#14b8a6` |
+| 5–10m | 🟢 Teal | `#14b8a6` |
 | 10–20m | 🔵 Indigo | `#6366f1` |
 | 20–40m | 🟣 Fuchsia | `#d946ef` |
 | ≥ 40m | ⚪ White | `#ffffff` |
