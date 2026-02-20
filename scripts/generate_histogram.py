@@ -48,6 +48,11 @@ def format_duration(seconds: float) -> str:
     return f"{hours:.1f}h"
 
 
+def _xml_escape(text: str) -> str:
+    """Escape special XML characters in text content."""
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+
 def generate_histogram_svg(
     histogram_data: list[dict],
     stats: dict,
@@ -107,7 +112,7 @@ def generate_histogram_svg(
                     f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_width:.1f}" '
                     f'height="{bar_h:.1f}" rx="{radius}" fill="{colors["bar"]}" '
                     f'opacity="0.9">'
-                    f'<title>{d["bin"]}: {d["count"]} turns</title>'
+                    f'<title>{_xml_escape(d["bin"])}: {d["count"]} turns</title>'
                     f'</rect>'
                 )
                 # Count label above bar
@@ -125,7 +130,7 @@ def generate_histogram_svg(
                 f'y="{margin_top + chart_h + 20:.1f}" '
                 f'text-anchor="middle" fill="{colors["text_secondary"]}" '
                 f'font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">'
-                f'{d["bin"]}</text>'
+                f'{_xml_escape(d["bin"])}</text>'
             )
 
         # Y-axis grid lines

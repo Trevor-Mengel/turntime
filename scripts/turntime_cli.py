@@ -120,8 +120,7 @@ def create_or_update_gist(token: str, gist_id: str | None, files: dict[str, str 
 def update_profile_readme(
     readme_path: Path,
     badges_md: str,
-    histogram_path: str | None = None,
-    gist_raw_url: str | None = None,
+    histogram_url: str | None = None,
 ):
     """Update a profile README with turntime badges and histogram."""
     if not readme_path.exists():
@@ -139,13 +138,10 @@ def update_profile_readme(
         content += f'\n\n{badges_md}\n'
 
     # Replace histogram section
-    if histogram_path or gist_raw_url:
-        img_src = histogram_path or gist_raw_url
+    if histogram_url:
         histogram_md = (
             f'<!-- turntime histogram -->\n'
-            f'<picture>\n'
-            f'  <img src="{img_src}" alt="Claude Code Turn Duration Histogram" />\n'
-            f'</picture>\n'
+            f'<img src="{histogram_url}" alt="Claude Code Turn Duration Histogram" width="840" />\n'
             f'<!-- /turntime histogram -->'
         )
         hist_pattern = r'<!-- turntime histogram -->.*?<!-- /turntime histogram -->'
@@ -299,7 +295,7 @@ def cmd_sync(args):
         histogram_data=histogram_data,
         stats=period_stats,
         period_label=period_labels.get(histogram_period, histogram_period),
-        theme=args.theme or 'auto',
+        theme=args.theme or 'dark',
     )
 
     # Generate badges (pass config for customization)
@@ -367,16 +363,16 @@ def cmd_sync(args):
     profile_repo = config.get('profile_repo')
     if profile_repo:
         readme_path = Path(profile_repo) / 'README.md'
-        if github_user:
-            gist_raw = f"https://gist.githubusercontent.com/{github_user}/{gist_id}/raw/turntime-histogram.svg"
-        else:
-            print("⚠️  GitHub username not configured. Run `turntime init` to fix.")
-            gist_raw = f"https://gist.githubusercontent.com/raw/{gist_id}/turntime-histogram.svg"
-        if update_profile_readme(readme_path, badges_md, gist_raw_url=gist_raw):
+        # Copy SVG directly into profile repo (avoids GitHub camo proxy caching issues)
+        svg_dest = Path(profile_repo) / 'turntime-histogram.svg'
+        svg_dest.write_text(svg)
+        # Use absolute raw URL so GitHub renders the SVG reliably
+        histogram_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/main/turntime-histogram.svg"
+        if update_profile_readme(readme_path, badges_md, histogram_url=histogram_url):
             print(f"📝 Updated {readme_path}")
             # Git commit & push
             try:
-                run_cmd(['git', '-C', profile_repo, 'add', 'README.md'])
+                run_cmd(['git', '-C', profile_repo, 'add', 'README.md', 'turntime-histogram.svg'])
                 run_cmd(['git', '-C', profile_repo, 'commit', '-m',
                          f'chore: update turntime stats ({now.strftime("%Y-%m-%d")})'],
                         check=False)
