@@ -315,17 +315,12 @@ def cmd_sync(args):
     # Generate endpoint JSON (for shields.io dynamic badges)
     endpoint_json = generate_badge_json(period_stats)
 
-    # Generate Gist summary (shows in pinned Gist preview)
-    gist_summary = (
-        f"## ⏱ Claude Code Turn Duration\n"
-        f"\n"
-        f"Avg: {format_duration(period_stats.get('avg_seconds', 0))}"
-        f" · Median: {format_duration(period_stats.get('median_seconds', 0))}"
-        f" · P90: {format_duration(period_stats.get('p90_seconds', 0))}\n"
-        f"{period_stats.get('count', 0)} turns {period_labels.get(histogram_period, histogram_period).lower()}\n"
-        f"\n"
-        f"Powered by [turntime](https://github.com/Trevor-Mengel/turntime)\n"
-    )
+    # Build badge lines for Gist summary (without HTML comment markers)
+    gist_badge_lines = []
+    for p in badge_periods:
+        if p in badges:
+            gist_badge_lines.append(badges[p]['markdown'])
+    gist_badges = '\n'.join(gist_badge_lines)
 
     # Save locally
     output_dir = Path(args.output_dir or '.turntime-output')
@@ -344,7 +339,27 @@ def cmd_sync(args):
     # Push to Gist
     token = get_github_token()
     gist_id = config.get('gist_id')
+    github_user = config.get('github_username') or get_github_username(token)
     print(f"🔄 Pushing to Gist {gist_id}...")
+
+    # Build Gist README with rendered badges and histogram
+    if github_user and gist_id:
+        histogram_url = f"https://gist.githubusercontent.com/{github_user}/{gist_id}/raw/turntime-histogram.svg"
+    else:
+        histogram_url = ""
+    gist_summary = (
+        f"## ⏱ Claude Code Turn Duration\n"
+        f"\n"
+        f"{gist_badges}\n"
+        f"\n"
+    )
+    if histogram_url:
+        gist_summary += f"![Turn Duration Histogram]({histogram_url})\n\n"
+    gist_summary += (
+        f"*{period_stats.get('count', 0)} turns"
+        f" {period_labels.get(histogram_period, histogram_period).lower()}"
+        f" · Powered by [turntime](https://github.com/Trevor-Mengel/turntime)*\n"
+    )
 
     gist_files: dict[str, str | None] = {
         'README.md': gist_summary,
@@ -365,12 +380,9 @@ def cmd_sync(args):
     profile_repo = config.get('profile_repo')
     if profile_repo:
         readme_path = Path(profile_repo) / 'README.md'
-        # Gist raw URLs require the username: gist.githubusercontent.com/{user}/{id}/raw/{file}
-        github_user = config.get('github_username') or get_github_username(token)
         if github_user:
             gist_raw = f"https://gist.githubusercontent.com/{github_user}/{gist_id}/raw/turntime-histogram.svg"
         else:
-            # Fallback: use the Gist API to get the raw URL
             print("⚠️  GitHub username not configured. Run `turntime init` to fix.")
             gist_raw = f"https://gist.githubusercontent.com/raw/{gist_id}/turntime-histogram.svg"
         if update_profile_readme(readme_path, badges_md, gist_raw_url=gist_raw):
