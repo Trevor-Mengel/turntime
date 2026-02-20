@@ -26,27 +26,30 @@ def format_duration(seconds: float) -> str:
 def duration_color(seconds: float) -> str:
     """Pick a badge color based on average turn duration.
 
-    Thresholds calibrated for real Claude Code turns (typically 1-10 minutes):
-      < 2 min  = brightgreen (very fast)
-      < 5 min  = green (fast)
-      < 10 min = yellowgreen (typical)
-      < 20 min = yellow (longer sessions)
-      < 45 min = orange (very long)
-      > 45 min = red (unusually long)
+    Longer turns signal deeper, more complex AI-assisted work — the color
+    palette progresses from neutral to increasingly vibrant, rewarding
+    sustained sessions.  Hex values are Tailwind-inspired:
+
+      < 2 min  = slate-400   (#94a3b8)  — quick / routine
+      < 5 min  = amber-500   (#f59e0b)  — warming up
+      < 10 min = teal-500    (#14b8a6)  — solid session
+      < 20 min = indigo-500  (#6366f1)  — deep work
+      < 40 min = fuchsia-500 (#d946ef)  — marathon
+      ≥ 40 min = white       (#ffffff)  — legendary
     """
     if seconds == 0:
         return "lightgrey"
     if seconds < 120:
-        return "brightgreen"
+        return "94a3b8"
     if seconds < 300:
-        return "green"
+        return "f59e0b"
     if seconds < 600:
-        return "yellowgreen"
+        return "14b8a6"
     if seconds < 1200:
-        return "yellow"
-    if seconds < 2700:
-        return "orange"
-    return "red"
+        return "6366f1"
+    if seconds < 2400:
+        return "d946ef"
+    return "ffffff"
 
 
 def generate_static_badge(label: str, value: str, color: str, logo: str = "") -> str:
@@ -54,7 +57,7 @@ def generate_static_badge(label: str, value: str, color: str, logo: str = "") ->
     base = "https://img.shields.io/badge"
     label_enc = quote(label.replace('-', '--').replace('_', '__'))
     value_enc = quote(value.replace('-', '--').replace('_', '__'))
-    url = f"{base}/{label_enc}-{value_enc}-{color}?style=flat-square"
+    url = f"{base}/{label_enc}-{value_enc}-{color}?style=for-the-badge"
     if logo:
         url += f"&logo={quote(logo)}&logoColor=white"
     return url
@@ -86,7 +89,7 @@ def generate_badge_json(stats: dict) -> dict:
         "message": format_duration(avg),
         "color": duration_color(avg),
         "namedLogo": "claude",
-        "style": "flat-square",
+        "style": "for-the-badge",
     }
 
 
@@ -138,7 +141,7 @@ def generate_all_badges(data: dict, config: dict | None = None) -> dict:
     badges = {}
 
     metric = config.get('badge_metric', 'avg')
-    style = config.get('badge_style', 'flat-square')
+    style = config.get('badge_style', 'for-the-badge')
     show_delta = config.get('badge_delta', True)
     baseline_key = config.get('badge_delta_baseline', 'all')
 
@@ -167,8 +170,8 @@ def generate_all_badges(data: dict, config: dict | None = None) -> dict:
 
         color = duration_color(val) if metric != 'count' else 'blue'
         url = generate_static_badge(label, value, color)
-        if style != 'flat-square':
-            url = url.replace('style=flat-square', f'style={quote(style)}')
+        if style != 'for-the-badge':
+            url = url.replace('style=for-the-badge', f'style={quote(style)}')
 
         badges[period] = {
             'url': url,

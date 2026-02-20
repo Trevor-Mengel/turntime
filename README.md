@@ -158,7 +158,7 @@ Config is stored at `~/.config/turntime/config.json`:
   "histogram_period": "month",
   "badge_periods": ["week", "all"],
   "badge_metric": "avg",
-  "badge_style": "flat-square",
+  "badge_style": "for-the-badge",
   "badge_delta": true,
   "badge_delta_baseline": "all",
   "theme": "auto"
@@ -172,18 +172,18 @@ Config is stored at `~/.config/turntime/config.json`:
 | `histogram_period` | Period for histogram chart | `"month"` |
 | `badge_periods` | Which periods to show as badges | `["week", "all"]` |
 | `badge_metric` | Metric to display: `"avg"`, `"median"`, `"p90"`, `"count"` | `"avg"` |
-| `badge_style` | shields.io badge style: `"flat"`, `"flat-square"`, `"plastic"`, `"for-the-badge"` | `"flat-square"` |
+| `badge_style` | shields.io badge style: `"flat"`, `"flat-square"`, `"plastic"`, `"for-the-badge"` | `"for-the-badge"` |
 | `badge_delta` | Show ▲/▼ percentage vs baseline period | `true` |
 | `badge_delta_baseline` | Period to compare against for delta | `"all"` |
 | `theme` | SVG theme: `"auto"`, `"dark"`, `"light"` | `"auto"` |
 
 ### Badge examples
 
-**Default** — weekly average with delta vs all-time:
+**Default** — weekly average with delta vs all-time, `for-the-badge` style:
 ```json
 { "badge_periods": ["week", "all"], "badge_metric": "avg", "badge_delta": true }
 ```
-> ![⏱ This Week](https://img.shields.io/badge/⏱%20This%20Week-8.2m%20▲15%25-yellowgreen?style=flat-square) ![⏱ All Time](https://img.shields.io/badge/⏱%20All%20Time-7.2m-yellowgreen?style=flat-square)
+> ![⏱ This Week](https://img.shields.io/badge/⏱%20This%20Week-8.2m%20▲15%25-6366f1?style=for-the-badge) ![⏱ All Time](https://img.shields.io/badge/⏱%20All%20Time-7.2m-6366f1?style=for-the-badge)
 
 **Median-focused** — show median instead of average:
 ```json
@@ -195,9 +195,9 @@ Config is stored at `~/.config/turntime/config.json`:
 { "badge_periods": ["today", "month", "all"], "badge_delta": false }
 ```
 
-**For-the-badge style**:
+**Flat-square style** — compact badges:
 ```json
-{ "badge_style": "for-the-badge" }
+{ "badge_style": "flat-square" }
 ```
 
 ## How it works
@@ -223,16 +223,16 @@ No prompt content, code, or file paths from your sessions are ever included in t
 
 ## Badge customization
 
-Badges use [shields.io](https://shields.io) and are color-coded by average duration:
+Badges use [shields.io](https://shields.io) with a Tailwind-inspired color palette. Longer turns = deeper AI-assisted work, so the progression rewards sustained sessions:
 
-| Duration | Color |
-|----------|-------|
-| < 2m | 🟢 brightgreen |
-| 2-5m | 🟢 green |
-| 5-10m | 🟡 yellowgreen |
-| 10-20m | 🟡 yellow |
-| 20-45m | 🟠 orange |
-| > 45m | 🔴 red |
+| Duration | Color | Hex |
+|----------|-------|-----|
+| < 2m | ⚪ Slate | `#94a3b8` |
+| 2–5m | 🟡 Amber | `#f59e0b` |
+| 5–10m | 🩵 Teal | `#14b8a6` |
+| 10–20m | 🔵 Indigo | `#6366f1` |
+| 20–40m | 🟣 Fuchsia | `#d946ef` |
+| ≥ 40m | ⚪ White | `#ffffff` |
 
 ### Dynamic badges (recommended)
 
