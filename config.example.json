@@ -1,6 +1,11 @@
 {
   "gist_id": null,
+  "github_username": null,
   "profile_repo": null,
   "badge_periods": ["week", "all"],
+  "badge_metric": "avg",
+  "badge_style": "for-the-badge",
+  "badge_delta": true,
+  "badge_delta_baseline": "all",
   "theme": "auto"
 }

@@ -34,7 +34,14 @@ Internally at Anthropic, Claude Code's success rate on the hardest tasks doubled
 
 ## Install
 
-**Prerequisites:** Python 3.9+, [Claude Code](https://claude.ai/download) with at least one session, and the [GitHub CLI (`gh`)](https://cli.github.com/) authenticated via `gh auth login`.
+**Prerequisites:**
+- **Python 3.9+** — check with `python3 --version`
+- **[Claude Code](https://claude.ai/download)** — you need at least one session. If you just installed Claude Code, open it, ask it any question, and you're good to go. turntime reads the session logs it creates at `~/.claude/projects/`.
+- **GitHub authentication** (for syncing to your profile) — either:
+  - [GitHub CLI (`gh`)](https://cli.github.com/) — install it, then run `gh auth login`
+  - Or set a `GITHUB_TOKEN` environment variable: `export GITHUB_TOKEN=your_token`
+
+**macOS / Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Trevor-Mengel/turntime/main/setup.sh | bash
@@ -42,13 +49,15 @@ curl -fsSL https://raw.githubusercontent.com/Trevor-Mengel/turntime/main/setup.s
 
 This clones turntime to `~/.local/share/turntime` and adds a `turntime` command to your PATH.
 
-Or clone manually:
+**Windows / manual install:**
 
 ```bash
 git clone https://github.com/Trevor-Mengel/turntime.git
 cd turntime
 python3 scripts/turntime_cli.py stats
 ```
+
+On Windows, use `python` instead of `python3` if that's how Python is installed. You can create an alias or run the scripts directly from the cloned directory.
 
 ## What it measures
 
@@ -139,33 +148,83 @@ This parses your Claude Code logs, generates badges and a histogram SVG, pushes 
 
 After it finishes, visit `github.com/<your-username>` — you should see your badges and histogram chart.
 
-### 6. Automate updates (optional)
+### 6. Pin your Gist (optional)
 
-**macOS (launchd):**
+When you ran `turntime init`, it created a public Gist with a live dashboard showing your weekly average. You can pin this Gist to your GitHub profile:
 
-Create `~/Library/LaunchAgents/com.turntime.sync.plist` to sync every 6 hours. See the repo wiki for a ready-to-use plist template.
+1. Go to your GitHub profile (`github.com/<your-username>`)
+2. Click **Customize your pins**
+3. Select the turntime Gist (named "turntime - Claude Code turn duration stats")
 
-**Any platform (cron):**
+The pinned Gist will update automatically every time you run `turntime sync`.
 
-```bash
-crontab -e
-```
+### 7. Automate updates (optional)
 
-```cron
-0 */6 * * * cd /path/to/turntime && python3 scripts/turntime_cli.py sync 2>/dev/null
-```
+A ready-to-use wrapper script is included at [`sync-cron.sh`](sync-cron.sh). It loads your GitHub token from `~/.config/turntime/.env` so it works in non-interactive shells where `gh auth token` can't access the keychain.
 
-> **Note:** For cron/launchd, store your GitHub token in `~/.config/turntime/.env` as `GH_TOKEN=<token>` and source it in your wrapper script. The `gh auth token` command may not work in non-interactive shells due to keychain access.
+**Setup:**
 
-### 7. Automate with GitHub Actions (optional)
+1. Create your env file:
+   ```bash
+   echo "GH_TOKEN=$(gh auth token)" > ~/.config/turntime/.env
+   ```
 
-If you commit `turntime-stats.json` to your profile repo, you can add a GitHub Action to regenerate the histogram and update badges daily — even when your machine is off:
+2. **cron (any platform):**
+   ```bash
+   crontab -e
+   ```
+   ```cron
+   0 */6 * * * ~/.local/share/turntime/sync-cron.sh >> ~/.config/turntime/logs/sync.log 2>&1
+   ```
 
-1. Copy `.github/workflows/update-stats.yml` to your profile repo
-2. Add these repository secrets:
-   - `TURNTIME_GIST_ID` — your Gist ID (from `~/.config/turntime/config.json`)
+3. **macOS launchd:**
+   ```bash
+   cat > ~/Library/LaunchAgents/com.turntime.sync.plist << 'EOF'
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key><string>com.turntime.sync</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>/bin/bash</string>
+           <string>-c</string>
+           <string>~/.local/share/turntime/sync-cron.sh</string>
+       </array>
+       <key>StartInterval</key><integer>21600</integer>
+       <key>StandardOutPath</key><string>~/.config/turntime/logs/sync.log</string>
+       <key>StandardErrorPath</key><string>~/.config/turntime/logs/sync.log</string>
+   </dict>
+   </plist>
+   EOF
+   launchctl load ~/Library/LaunchAgents/com.turntime.sync.plist
+   ```
+
+### 8. Automate with GitHub Actions (optional)
+
+If you want stats to update even when your machine is off, you can use a GitHub Action. This requires committing `turntime-stats.json` to your profile repo first.
+
+**Setup:**
+
+1. Generate and commit the stats file to your profile repo:
+   ```bash
+   turntime sync --local-only
+   cp .turntime-output/turntime-stats.json ~/YOUR_USERNAME/
+   cd ~/YOUR_USERNAME
+   git add turntime-stats.json && git commit -m "add turntime stats" && git push
+   ```
+
+2. Copy the workflow file from this repo to your profile repo:
+   ```bash
+   mkdir -p ~/YOUR_USERNAME/.github/workflows
+   cp /path/to/turntime/Trevor-Mengel/.github/workflows/update-stats.yml ~/YOUR_USERNAME/.github/workflows/
+   ```
+
+3. Add these repository secrets (Settings > Secrets and variables > Actions):
+   - `TURNTIME_GIST_ID` — your Gist ID (find it in `~/.config/turntime/config.json`)
    - `TURNTIME_GIST_TOKEN` — a [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) with **Gists** (read/write) and **Contents** (read/write) permissions
-3. The action runs daily at 6am UTC and supports manual dispatch
+
+4. The action runs daily at 6am UTC. You can also trigger it manually from the Actions tab.
 
 ## CLI reference
 
@@ -180,6 +239,8 @@ turntime sync --local-only --theme dark
 
 # Full sync: parse → generate → push to Gist → update README
 turntime sync
+turntime sync --project myproject     # sync only a specific project
+turntime sync --config /path/to/config.json  # use custom config
 
 # Initialize configuration
 turntime init
@@ -195,6 +256,7 @@ python3 scripts/parse_sessions.py --output stats.json --verbose
 
 # Generate histogram SVG
 python3 scripts/generate_histogram.py stats.json --output histogram.svg --theme auto
+python3 scripts/generate_histogram.py stats.json --output histogram.svg --width 600 --height 250
 
 # Generate badge markdown
 python3 scripts/generate_badges.py stats.json --format markdown
@@ -207,7 +269,8 @@ Config is stored at `~/.config/turntime/config.json`:
 ```json
 {
   "gist_id": "abc123...",
-  "profile_repo": "~/you",
+  "github_username": "janedoe",
+  "profile_repo": "~/janedoe",
   "badge_periods": ["week", "all"],
   "badge_metric": "avg",
   "badge_style": "for-the-badge",
@@ -220,6 +283,7 @@ Config is stored at `~/.config/turntime/config.json`:
 | Key | Description | Default |
 |-----|-------------|---------|
 | `gist_id` | GitHub Gist ID for hosting stats | Set by `init` |
+| `github_username` | Your GitHub username (for Gist raw URLs) | Set by `init` |
 | `profile_repo` | Local path to your profile repo | Optional |
 | `badge_periods` | Which periods to show as badges | `["week", "all"]` |
 | `badge_metric` | Metric to display: `"avg"`, `"median"`, `"p90"`, `"count"` | `"avg"` |
@@ -316,6 +380,32 @@ The SVG histogram supports GitHub's automatic dark/light theme via `prefers-colo
 - `gh` CLI or `GITHUB_TOKEN` environment variable (for Gist sync)
 - No external Python dependencies — uses only the standard library
 - A willingness to quantify your relationship with an AI (you're already here)
+
+## Troubleshooting
+
+**`turntime: command not found`**
+Your shell doesn't see `~/.local/bin`. Either restart your terminal (the installer added it to your shell config) or run directly: `python3 ~/.local/share/turntime/turntime.py stats`
+
+**`No session files found`**
+Claude Code hasn't created any session logs yet. Open Claude Code, send at least one message, then try again. Logs are stored in `~/.claude/projects/`.
+
+**`No turns extracted from session files`**
+Your session files exist but don't contain complete user-to-assistant message pairs. This can happen with very short sessions or interrupted conversations. Try having a longer conversation with Claude Code first.
+
+**`GitHub API error (401)`**
+Your token is invalid or expired. Re-authenticate: `gh auth login` or update your `GITHUB_TOKEN` environment variable.
+
+**`GitHub API error (403)`**
+Your token doesn't have the right permissions. For Gist sync you need a token with **Gists** read/write access. Create a new [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) with the Gists permission.
+
+**`GitHub API error (404)`**
+Your Gist ID is invalid. Run `turntime init` again to create a new Gist, or check `~/.config/turntime/config.json` and verify `gist_id` is correct.
+
+**Badges or histogram not appearing on profile**
+Make sure your profile README has the comment markers (`<!-- turntime badges -->` ... `<!-- /turntime badges -->`) and that you ran `turntime sync` (not just `--local-only`). Check that your profile repo was pushed: `cd ~/YOUR_USERNAME && git status`.
+
+**Cron/launchd sync not working**
+The `gh auth token` command requires keychain access, which doesn't work in non-interactive shells. Store your token in `~/.config/turntime/.env` as `GH_TOKEN=your_token` and use the included `sync-cron.sh` wrapper script.
 
 ## Roadmap
 

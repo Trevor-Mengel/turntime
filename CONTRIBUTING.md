@@ -33,6 +33,26 @@ turntime.py               # Wrapper entry point
 setup.sh                  # One-liner install script
 ```
 
+## Testing your changes
+
+No automated test runner is configured yet. Verify changes manually:
+
+```bash
+# Test with fixture data (no real Claude Code logs needed)
+python3 scripts/parse_sessions.py --claude-dir tests/fixtures --verbose
+
+# Test with your real logs
+python3 scripts/turntime_cli.py stats
+
+# Generate output locally without pushing to GitHub
+python3 scripts/turntime_cli.py sync --local-only
+
+# Check generated files
+ls -la .turntime-output/
+```
+
+If your changes affect the histogram, open `.turntime-output/turntime-histogram.svg` in a browser to verify it renders correctly. If your changes affect badges, check `.turntime-output/turntime-badges.md`.
+
 ## Guidelines
 
 - **Python 3.9+** — use `from __future__ import annotations` in every file for `X | Y` type hint compatibility
