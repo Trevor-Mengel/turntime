@@ -1,0 +1,10 @@
+{
+  "gist_id": null,
+  "profile_repo": null,
+  "histogram_period": "month",
+  "badge_periods": ["month", "all"],
+  "theme": "auto",
+  "exclude_projects": [],
+  "max_turn_duration_seconds": 1800,
+  "min_turn_duration_seconds": 0.5
+}

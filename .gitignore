@@ -1,0 +1,17 @@
+# Generated output
+.turntime-output/
+tests/output/
+
+# Config with secrets
+.turntime.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Archives
+*.tar.gz
