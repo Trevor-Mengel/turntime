@@ -295,10 +295,13 @@ def cmd_sync(args):
     badges = generate_all_badges(output, config)
     badge_periods = args.badge_periods or config.get('badge_periods', ['week', 'all'])
     badge_md_lines = ["<!-- turntime badges -->"]
+    badge_md_lines.append("Want to share your stats for Claude Code? [Get TurnTime here.](https://github.com/Trevor-Mengel/turntime)")
     badge_md_lines.append("### Avg. Turn Duration (Claude Code)")
     for p in badge_periods:
         if p in badges:
             badge_md_lines.append(badges[p]['markdown'])
+    badge_md_lines.append("")
+    badge_md_lines.append("Why is turn duration a strong performance indicator for AI programming skill? [Learn more.](https://www.anthropic.com/research/measuring-agent-autonomy)")
     badge_md_lines.append("<!-- /turntime badges -->")
     badges_md = '\n'.join(badge_md_lines)
 
