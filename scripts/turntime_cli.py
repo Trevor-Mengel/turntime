@@ -315,12 +315,39 @@ def cmd_sync(args):
     # Generate endpoint JSON (for shields.io dynamic badges)
     endpoint_json = generate_badge_json(period_stats)
 
-    # Build badge lines for Gist summary (without HTML comment markers)
-    gist_badge_lines = []
-    for p in badge_periods:
-        if p in badges:
-            gist_badge_lines.append(badges[p]['markdown'])
-    gist_badges = '\n'.join(gist_badge_lines)
+    # Build text dashboard for pinned Gist display (plain text, no markdown)
+    def _build_gist_dashboard() -> str:
+        avg = format_duration(period_stats.get('avg_seconds', 0))
+        median = format_duration(period_stats.get('median_seconds', 0))
+        p90 = format_duration(period_stats.get('p90_seconds', 0))
+        count = period_stats.get('count', 0)
+        label = period_labels.get(histogram_period, histogram_period)
+
+        # Group histogram bins into 4 broad categories
+        groups = [
+            ('< 1 min', 0, 60),
+            ('1 - 5 min', 60, 300),
+            ('5 - 20 min', 300, 1200),
+            ('> 20 min', 1200, float('inf')),
+        ]
+        group_counts = []
+        for name, lo, hi in groups:
+            total = sum(
+                d['count'] for d in histogram_data
+                if d.get('lo', 0) >= lo and d.get('lo', 0) < hi
+            )
+            group_counts.append((name, total))
+
+        max_ct = max((c for _, c in group_counts), default=1) or 1
+        bar_w = 25
+        lines = [f"Avg: {avg}  Median: {median}  P90: {p90}  ({count} turns)"]
+        for name, ct in group_counts:
+            filled = round((ct / max_ct) * bar_w)
+            bar = '\u2588' * filled + '\u2591' * (bar_w - filled)
+            lines.append(f"{name:<11} {bar} {ct:>3}")
+        return '\n'.join(lines) + '\n'
+
+    gist_dashboard = _build_gist_dashboard()
 
     # Save locally
     output_dir = Path(args.output_dir or '.turntime-output')
@@ -342,30 +369,12 @@ def cmd_sync(args):
     github_user = config.get('github_username') or get_github_username(token)
     print(f"🔄 Pushing to Gist {gist_id}...")
 
-    # Build Gist README with rendered badges and histogram
-    if github_user and gist_id:
-        histogram_url = f"https://gist.githubusercontent.com/{github_user}/{gist_id}/raw/turntime-histogram.svg"
-    else:
-        histogram_url = ""
-    gist_summary = (
-        f"## ⏱ Claude Code Turn Duration\n"
-        f"\n"
-        f"{gist_badges}\n"
-        f"\n"
-    )
-    if histogram_url:
-        gist_summary += f"![Turn Duration Histogram]({histogram_url})\n\n"
-    gist_summary += (
-        f"*{period_stats.get('count', 0)} turns"
-        f" {period_labels.get(histogram_period, histogram_period).lower()}"
-        f" · Powered by [turntime](https://github.com/Trevor-Mengel/turntime)*\n"
-    )
-
     gist_files: dict[str, str | None] = {
-        'README.md': gist_summary,
+        'dashboard': gist_dashboard,
         'turntime-stats.json': json.dumps(output, indent=2),
         'turntime-histogram.svg': svg,
         'turntime-shield.json': json.dumps(endpoint_json, indent=2),
+        'README.md': None,  # Remove markdown; plain text dashboard is the pin display
     }
 
     gist_id = create_or_update_gist(
