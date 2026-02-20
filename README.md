@@ -28,7 +28,7 @@ python3 scripts/turntime_cli.py stats
 
 **Turn duration** = the time from when you send a prompt to when Claude finishes its complete response (including all tool uses).
 
-A "turn" starts when a `user` message is logged and ends at the final `assistant` message before the next `user` message. Turns shorter than 0.5s (system messages) and longer than 30min (idle sessions) are automatically filtered out.
+A "turn" starts when you send a prompt (a genuine human message) and ends when Claude finishes its complete response — including all tool-use cycles. In the Claude API, tool results are sent as `user` messages with `tool_result` content blocks; turntime correctly identifies and skips these, so multi-step tool chains (read file → edit → run tests → respond) count as a single turn, not many. Subagent processes (background Task tool spawns) are excluded — only direct Claude Code sessions are measured. Turns shorter than 5 seconds (likely short terminal commands like `git push` or quick confirmations) are filtered out; there is no upper cap.
 
 ## Quick start
 
@@ -40,14 +40,14 @@ turntime stats
 You'll see a table like this:
 
 ```
-⏱  turntime stats (12849 turns from 505 sessions)
+⏱  turntime stats (712 turns from 108 sessions)
 
 Period                Avg   Median      P90      Min      Max    Count
 ────────────────────────────────────────────────────────────────────────
-Today               7.1s     3.7s    12.2s     0.5s    65.5s       58
-This Week           8.3s     4.6s    16.0s     0.5s   199.3s     3617
-This Month          7.8s     3.9s    13.7s     0.5s  1205.5s    11442
-All Time            8.0s     3.9s    14.3s     0.5s  1205.5s    12849
+Today              605.7s   222.6s  2596.4s     4.2s  2900.9s       27
+This Week          503.2s    99.6s  1251.3s     4.2s 12395.8s      210
+This Month         376.4s    52.4s   645.5s     0.6s 22822.4s      648
+All Time           412.1s    53.4s   661.5s     0.6s 24853.5s      712
 ```
 
 ## Setup for GitHub profile
@@ -156,7 +156,11 @@ Config is stored at `~/.config/turntime/config.json`:
   "gist_id": "abc123...",
   "profile_repo": "/Users/you/you",
   "histogram_period": "month",
-  "badge_periods": ["month", "all"],
+  "badge_periods": ["week", "all"],
+  "badge_metric": "avg",
+  "badge_style": "flat-square",
+  "badge_delta": true,
+  "badge_delta_baseline": "all",
   "theme": "auto"
 }
 ```
@@ -166,14 +170,41 @@ Config is stored at `~/.config/turntime/config.json`:
 | `gist_id` | GitHub Gist ID for hosting stats | Set by `init` |
 | `profile_repo` | Local path to your profile repo | Optional |
 | `histogram_period` | Period for histogram chart | `"month"` |
-| `badge_periods` | Which periods to show as badges | `["month", "all"]` |
-| `theme` | SVG theme: `auto`, `dark`, `light` | `"auto"` |
+| `badge_periods` | Which periods to show as badges | `["week", "all"]` |
+| `badge_metric` | Metric to display: `"avg"`, `"median"`, `"p90"`, `"count"` | `"avg"` |
+| `badge_style` | shields.io badge style: `"flat"`, `"flat-square"`, `"plastic"`, `"for-the-badge"` | `"flat-square"` |
+| `badge_delta` | Show ▲/▼ percentage vs baseline period | `true` |
+| `badge_delta_baseline` | Period to compare against for delta | `"all"` |
+| `theme` | SVG theme: `"auto"`, `"dark"`, `"light"` | `"auto"` |
+
+### Badge examples
+
+**Default** — weekly average with delta vs all-time:
+```json
+{ "badge_periods": ["week", "all"], "badge_metric": "avg", "badge_delta": true }
+```
+> ![⏱ This Week](https://img.shields.io/badge/⏱%20This%20Week-8.2m%20▲15%25-yellowgreen?style=flat-square) ![⏱ All Time](https://img.shields.io/badge/⏱%20All%20Time-7.2m-yellowgreen?style=flat-square)
+
+**Median-focused** — show median instead of average:
+```json
+{ "badge_periods": ["week", "all"], "badge_metric": "median" }
+```
+
+**No delta** — just the raw durations:
+```json
+{ "badge_periods": ["today", "month", "all"], "badge_delta": false }
+```
+
+**For-the-badge style**:
+```json
+{ "badge_style": "for-the-badge" }
+```
 
 ## How it works
 
 1. **Reads** Claude Code session logs from `~/.claude/projects/**/*.jsonl`
-2. **Parses** each JSONL file to extract timestamped user/assistant message pairs
-3. **Calculates** turn duration as `last_assistant_timestamp - user_timestamp`
+2. **Parses** each JSONL file to extract timestamped messages, distinguishing genuine human prompts from tool_result messages (which share `role: "user"` in the Claude API)
+3. **Calculates** turn duration from your prompt to Claude's final response, spanning all intermediate tool-use cycles
 4. **Aggregates** into time periods (day, week, month, quarter, year, all-time)
 5. **Generates** shields.io badge URLs and an SVG histogram chart
 6. **Pushes** to a GitHub Gist (for dynamic badge endpoints)
@@ -196,12 +227,12 @@ Badges use [shields.io](https://shields.io) and are color-coded by average durat
 
 | Duration | Color |
 |----------|-------|
-| < 10s | 🟢 brightgreen |
-| 10-30s | 🟢 green |
-| 30-60s | 🟡 yellowgreen |
-| 1-2m | 🟡 yellow |
-| 2-5m | 🟠 orange |
-| > 5m | 🔴 red |
+| < 2m | 🟢 brightgreen |
+| 2-5m | 🟢 green |
+| 5-10m | 🟡 yellowgreen |
+| 10-20m | 🟡 yellow |
+| 20-45m | 🟠 orange |
+| > 45m | 🔴 red |
 
 ### Dynamic badges (recommended)
 
@@ -216,7 +247,7 @@ Use the Gist endpoint for auto-updating badges:
 Or use direct shields.io URLs (generated by the badge script):
 
 ```markdown
-![⏱ This Month](https://img.shields.io/badge/⏱%20This%20Month-22.1s-green?style=flat-square)
+![⏱ This Month](https://img.shields.io/badge/⏱%20This%20Month-3.4m-green?style=flat-square)
 ```
 
 ## Histogram themes

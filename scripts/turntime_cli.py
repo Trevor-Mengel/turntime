@@ -190,7 +190,7 @@ def cmd_init(args):
 
     # Histogram period preference
     config.setdefault('histogram_period', 'month')
-    config.setdefault('badge_periods', ['month', 'all'])
+    config.setdefault('badge_periods', ['week', 'all'])
 
     save_config(config)
 
@@ -265,9 +265,9 @@ def cmd_sync(args):
         theme=args.theme or 'auto',
     )
 
-    # Generate badges
-    badges = generate_all_badges(output)
-    badge_periods = args.badge_periods or config.get('badge_periods', ['month', 'all'])
+    # Generate badges (pass config for customization)
+    badges = generate_all_badges(output, config)
+    badge_periods = args.badge_periods or config.get('badge_periods', ['week', 'all'])
     badge_md_lines = ["<!-- turntime badges -->"]
     for p in badge_periods:
         if p in badges:

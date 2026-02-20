@@ -92,16 +92,45 @@ def find_claude_dir() -> Path:
 
 
 def find_session_files(claude_dir: Path, project_filter: Optional[str] = None) -> list[Path]:
-    """Find all JSONL session files, optionally filtered by project."""
+    """Find Claude Code session JSONL files, optionally filtered by project.
+
+    Excludes subagent logs (agent-* files) which are background Task tool
+    processes, not direct user sessions.
+    """
     pattern = "**/*.jsonl" if not project_filter else f"*{project_filter}*/**/*.jsonl"
     files = sorted(claude_dir.glob(pattern))
-    # Exclude non-session files
-    session_files = [f for f in files if f.stem.startswith("session-") or f.stem != "sessions-index"]
+    # Exclude subagent files (agent-*) and index files
+    session_files = [
+        f for f in files
+        if not f.stem.startswith("agent-") and f.stem != "sessions-index"
+    ]
     return session_files
 
 
+def _is_tool_result_msg(message: dict) -> bool:
+    """Check if a message is a tool_result (not a genuine human user message).
+
+    In the Claude API, tool results are sent as user messages with content
+    blocks of type "tool_result". These should NOT be treated as turn
+    boundaries — they are part of the ongoing assistant turn.
+    """
+    content = message.get('content', '')
+    if isinstance(content, list):
+        return any(
+            isinstance(c, dict) and c.get('type') == 'tool_result'
+            for c in content
+        )
+    return False
+
+
 def parse_session_file(filepath: Path) -> list[Turn]:
-    """Parse a single JSONL session file and extract turns."""
+    """Parse a single JSONL session file and extract turns.
+
+    A "turn" is the time from a human user prompt to Claude's final response
+    before the next human prompt. Tool-use cycles (assistant tool_use →
+    user tool_result → assistant response) are part of the same turn, not
+    separate turns.
+    """
     turns = []
     messages = []
 
@@ -125,6 +154,9 @@ def parse_session_file(filepath: Path) -> list[Turn]:
                 if not timestamp or not role:
                     continue
 
+                # Detect tool_result messages (role=user but not a real human message)
+                is_tool_result = role == 'user' and _is_tool_result_msg(message)
+
                 # Collect token usage from assistant messages
                 usage = message.get('usage', {})
                 content = message.get('content', [])
@@ -139,6 +171,7 @@ def parse_session_file(filepath: Path) -> list[Turn]:
                     'timestamp': timestamp,
                     'role': role,
                     'session_id': session_id,
+                    'is_tool_result': is_tool_result,
                     'input_tokens': usage.get('input_tokens', 0),
                     'output_tokens': usage.get('output_tokens', 0),
                     'cache_read': usage.get('cache_read_input_tokens', 0),
@@ -154,21 +187,23 @@ def parse_session_file(filepath: Path) -> list[Turn]:
     # Extract project name from directory structure
     project = filepath.parent.name
 
-    # Build turns: find user→assistant pairs
-    # A turn starts at a user message and ends at the last assistant message
-    # before the next user message
+    # Build turns: find human_user→assistant pairs
+    # A turn starts at a HUMAN user message (not a tool_result) and ends at
+    # the last assistant message before the next HUMAN user message.
+    # Tool-use cycles (assistant→tool_result→assistant) are part of the same turn.
     i = 0
     while i < len(messages):
         msg = messages[i]
 
-        if msg['role'] == 'user':
+        # Only start a turn on a genuine human user message
+        if msg['role'] == 'user' and not msg['is_tool_result']:
             user_ts = msg['timestamp']
             user_dt = _parse_ts(user_ts)
             if user_dt is None:
                 i += 1
                 continue
 
-            # Collect all assistant messages until next user message
+            # Scan forward: collect all messages until the next HUMAN user message
             last_assistant_ts = None
             total_input = 0
             total_output = 0
@@ -178,7 +213,8 @@ def parse_session_file(filepath: Path) -> list[Turn]:
 
             while j < len(messages):
                 next_msg = messages[j]
-                if next_msg['role'] == 'user':
+                # Stop at the next genuine human user message
+                if next_msg['role'] == 'user' and not next_msg['is_tool_result']:
                     break
                 if next_msg['role'] == 'assistant':
                     last_assistant_ts = next_msg['timestamp']
@@ -193,9 +229,9 @@ def parse_session_file(filepath: Path) -> list[Turn]:
                 if assistant_dt and assistant_dt > user_dt:
                     duration = (assistant_dt - user_dt).total_seconds()
 
-                    # Filter out unreasonable durations
-                    # < 0.5s is likely a system message, > 30min is likely idle
-                    if 0.5 <= duration <= 1800:
+                    # Filter out turns under 5s (likely short terminal
+                    # commands like "git push", "ls", confirmations, etc.)
+                    if duration >= 5.0:
                         turns.append(Turn(
                             session_id=msg['session_id'],
                             project=project,
@@ -314,15 +350,17 @@ def build_histogram_data(turns: list[Turn], period: str = 'month',
 
     # Define bins (in seconds)
     bins = [
-        (0, 5, "0-5s"),
-        (5, 10, "5-10s"),
-        (10, 20, "10-20s"),
-        (20, 30, "20-30s"),
+        (0, 15, "<15s"),
+        (15, 30, "15-30s"),
         (30, 60, "30-60s"),
         (60, 120, "1-2m"),
         (120, 300, "2-5m"),
         (300, 600, "5-10m"),
-        (600, 1800, "10-30m"),
+        (600, 1200, "10-20m"),
+        (1200, 1800, "20-30m"),
+        (1800, 3600, "30-60m"),
+        (3600, 7200, "1-2h"),
+        (7200, float('inf'), ">2h"),
     ]
 
     # Filter turns by period
