@@ -34,6 +34,8 @@ Internally at Anthropic, Claude Code's success rate on the hardest tasks doubled
 
 ## Install
 
+**Prerequisites:** Python 3.9+, [Claude Code](https://claude.ai/download) with at least one session, and the [GitHub CLI (`gh`)](https://cli.github.com/) authenticated via `gh auth login`.
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Trevor-Mengel/turntime/main/setup.sh | bash
 ```
@@ -79,7 +81,28 @@ All Time           412.1s    53.4s   661.5s     0.6s 24853.5s      712
 
 ## Setup for GitHub profile
 
-### 1. Initialize
+### 1. Create a GitHub profile repo (if you don't have one)
+
+GitHub displays a special README on your profile when you create a repository that matches your username. If you already have one, skip to step 2.
+
+1. Go to [github.com/new](https://github.com/new)
+2. Set the **Repository name** to your exact GitHub username (e.g., if you're `janedoe`, name it `janedoe`)
+3. Check **Public**
+4. Check **Add a README file**
+5. Click **Create repository**
+
+You should now see a "Hi there" message on your profile at `github.com/<your-username>`.
+
+### 2. Clone your profile repo locally
+
+```bash
+# Replace YOUR_USERNAME with your GitHub username
+git clone https://github.com/YOUR_USERNAME/YOUR_USERNAME.git ~/YOUR_USERNAME
+```
+
+This downloads your profile repo to your home directory. You'll give this path to turntime in the next step.
+
+### 3. Initialize turntime
 
 ```bash
 turntime init
@@ -89,19 +112,12 @@ This will:
 - Verify Claude Code logs exist on your machine
 - Authenticate with GitHub (via `gh` CLI or `GITHUB_TOKEN`)
 - Create a public Gist to host your stats
+- Ask for your **profile repo path** — enter the path from step 2 (e.g., `~/YOUR_USERNAME`)
 - Save config to `~/.config/turntime/config.json`
 
-### 2. Sync your stats
+### 4. Add placeholder comments to your profile README
 
-```bash
-turntime sync
-```
-
-This parses your logs, generates a histogram SVG and badge data, and pushes everything to your Gist.
-
-### 3. Add to your profile README
-
-Add these placeholder comments to your GitHub profile `README.md`:
+Open the `README.md` inside your profile repo and add these comment markers wherever you want your stats to appear:
 
 ```markdown
 <!-- turntime badges -->
@@ -111,9 +127,19 @@ Add these placeholder comments to your GitHub profile `README.md`:
 <!-- /turntime histogram -->
 ```
 
-Then run `turntime sync` — it will inject your badges and histogram automatically.
+Save the file. turntime will inject your badges and chart between these markers automatically.
 
-### 4. Automate updates
+### 5. Sync your stats
+
+```bash
+turntime sync
+```
+
+This parses your Claude Code logs, generates badges and a histogram SVG, pushes them to your GitHub Gist, updates your profile README, and pushes the changes to GitHub.
+
+After it finishes, visit `github.com/<your-username>` — you should see your badges and histogram chart.
+
+### 6. Automate updates (optional)
 
 **macOS (launchd):**
 
@@ -131,7 +157,7 @@ crontab -e
 
 > **Note:** For cron/launchd, store your GitHub token in `~/.config/turntime/.env` as `GH_TOKEN=<token>` and source it in your wrapper script. The `gh auth token` command may not work in non-interactive shells due to keychain access.
 
-### 5. Automate with GitHub Actions (optional)
+### 7. Automate with GitHub Actions (optional)
 
 If you commit `turntime-stats.json` to your profile repo, you can add a GitHub Action to regenerate the histogram and update badges daily — even when your machine is off:
 
