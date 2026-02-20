@@ -4,7 +4,7 @@
 
 Anthropic's research shows that the top 0.1% of Claude Code users have average turn durations [nearly double](https://www.anthropic.com/research/agent-autonomy) everyone else's — and climbing. These are the power users tackling the most complex, ambitious work: the kind where Claude reads dozens of files, orchestrates multi-step tool chains, runs tests, refactors, and delivers — all in a single turn. Turn duration is one of the clearest signals of how much autonomy you're granting your agent, and how hard the problems you're throwing at it actually are.
 
-turntime makes that visible. It parses your local Claude Code session logs, calculates your turn durations, and generates badges and histogram charts you can display on your GitHub profile — updated automatically.
+turntime makes that visible. It parses your local Claude Code session logs, calculates your turn durations, and generates badges and histogram charts you can display on your GitHub profile — because if you're going to let an AI work unsupervised for 20 minutes, you might as well get credit for it.
 
 <picture>
   <img src="assets/example-histogram.svg" alt="Example turn duration histogram" />
@@ -18,7 +18,7 @@ The interesting signal is in the tail. Between October 2025 and January 2026, th
 
 Internally at Anthropic, Claude Code's success rate on the hardest tasks doubled between August and December, while human interventions per session dropped from 5.4 to 3.3. Users are granting more autonomy *and* getting better outcomes.
 
-**Where do you fall on that curve?** turntime lets you find out — and show it off.
+**Where do you fall on that curve?** turntime lets you find out. Whether you should *tell* people is between you and your conscience.
 
 ## Install
 
@@ -40,13 +40,13 @@ python3 scripts/turntime_cli.py stats
 
 **Turn duration** = the wall-clock time from when you send a prompt to when Claude finishes its complete response — including every intermediate tool call in between.
 
-When Claude reads 14 files, edits 3, runs the test suite, and refactors based on the results, that's one turn. turntime captures the full duration of that autonomous work, not just the final response.
+When Claude reads 14 files, edits 3, runs the test suite, and refactors based on the results — that's one turn. You were probably making coffee. turntime captures the full duration of that autonomous work, not just the final response.
 
 Technical details:
 - Tool results (`user` messages with `tool_result` content blocks) are correctly identified and skipped — multi-step tool chains count as a single turn, not dozens of micro-turns
 - Subagent processes (background Task tool spawns) are excluded — only your direct Claude Code sessions are measured
 - Turns under 5 seconds are filtered out (quick confirmations and short terminal commands)
-- No upper cap — long turns are the most interesting data
+- No upper cap — if Claude wants to work for an hour, who are we to stop it
 
 ## Quick start
 
@@ -234,7 +234,7 @@ turntime **never** reads your prompts or code. It only extracts:
 - Tool use counts (for optional complexity metrics)
 - Session IDs and project directory names
 
-No prompt content, code, or file paths from your sessions are ever included in the output.
+Your prompts, code, and questionable variable names stay between you and Claude.
 
 ## Badge colors
 
@@ -279,10 +279,11 @@ The SVG histogram supports GitHub's automatic dark/light theme via `prefers-colo
 - Claude Code installed (with at least one session in `~/.claude/projects/`)
 - `gh` CLI or `GITHUB_TOKEN` environment variable (for Gist sync)
 - No external Python dependencies — uses only the standard library
+- A willingness to quantify your relationship with an AI (you're already here)
 
 ## Roadmap
 
-- [ ] Global and regional leaderboards
+- [ ] Global and regional leaderboards (we know you want this)
 - [ ] Public website for leaderboard display
 - [ ] `pip install turntime` package distribution
 - [ ] Additional metrics (tokens/turn, tool uses/turn, complexity score)
