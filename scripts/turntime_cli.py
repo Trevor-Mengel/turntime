@@ -216,12 +216,24 @@ def cmd_sync(args):
     # Parse sessions
     claude_dir = Path(args.claude_dir) if args.claude_dir else find_claude_dir()
     session_files = find_session_files(claude_dir, args.project)
+    if not session_files:
+        print("❌ No session files found.")
+        if args.project:
+            print(f"   No sessions matched project filter '{args.project}'.")
+        else:
+            print("   Make sure Claude Code is installed and you've had at least one session.")
+        sys.exit(1)
     print(f"📂 Parsing {len(session_files)} session files...")
 
     all_turns = []
     for filepath in session_files:
         turns = parse_session_file(filepath)
         all_turns.extend(turns)
+
+    if not all_turns:
+        print("⚠️  No turns extracted from session files.")
+        print("   Your session files may not contain complete user→assistant message pairs.")
+        sys.exit(1)
 
     print(f"✅ Extracted {len(all_turns)} turns")
 
@@ -328,6 +340,14 @@ def cmd_stats(args):
     """Show stats without syncing."""
     claude_dir = Path(args.claude_dir) if args.claude_dir else find_claude_dir()
     session_files = find_session_files(claude_dir, args.project)
+
+    if not session_files:
+        print("❌ No session files found.")
+        if args.project:
+            print(f"   No sessions matched project filter '{args.project}'.")
+        else:
+            print("   Make sure Claude Code is installed and you've had at least one session.")
+        sys.exit(1)
 
     all_turns = []
     for filepath in session_files:

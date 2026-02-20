@@ -8,10 +8,21 @@ turntime parses your local Claude Code session logs, calculates how long each pr
   <img src="assets/example-histogram.svg" alt="Example turn duration histogram" />
 </picture>
 
-<!-- turntime badges -->
-![⏱ This Month](https://img.shields.io/badge/%E2%8F%B1%20This%20Month-1.3m-yellow?style=flat-square)
-![⏱ All Time](https://img.shields.io/badge/%E2%8F%B1%20All%20Time-1.3m-yellow?style=flat-square)
-<!-- /turntime badges -->
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Trevor-Mengel/turntime/main/setup.sh | bash
+```
+
+This clones turntime to `~/.local/share/turntime` and adds a `turntime` command to your PATH.
+
+Or clone manually:
+
+```bash
+git clone https://github.com/Trevor-Mengel/turntime.git
+cd turntime
+python3 scripts/turntime_cli.py stats
+```
 
 ## What it measures
 
@@ -22,25 +33,21 @@ A "turn" starts when a `user` message is logged and ends at the final `assistant
 ## Quick start
 
 ```bash
-# Clone the repo
-git clone https://github.com/Trevor-Mengel/turntime.git
-cd turntime
-
 # View your stats immediately (no setup needed)
-python3 scripts/turntime_cli.py stats
+turntime stats
 ```
 
-That's it — you'll see a table like this:
+You'll see a table like this:
 
 ```
-⏱  turntime stats (847 turns from 93 sessions)
+⏱  turntime stats (12849 turns from 505 sessions)
 
 Period                Avg   Median      P90      Min      Max    Count
 ────────────────────────────────────────────────────────────────────────
-Today               18.3s    12.1s    45.2s     2.1s    62.0s       23
-This Week           24.7s    15.8s    58.3s     1.2s   185.0s      142
-This Month          22.1s    14.2s    52.0s     0.8s   210.5s      387
-All Time            26.4s    16.5s    61.2s     0.5s   450.3s      847
+Today               7.1s     3.7s    12.2s     0.5s    65.5s       58
+This Week           8.3s     4.6s    16.0s     0.5s   199.3s     3617
+This Month          7.8s     3.9s    13.7s     0.5s  1205.5s    11442
+All Time            8.0s     3.9s    14.3s     0.5s  1205.5s    12849
 ```
 
 ## Setup for GitHub profile
@@ -48,7 +55,7 @@ All Time            26.4s    16.5s    61.2s     0.5s   450.3s      847
 ### 1. Initialize
 
 ```bash
-python3 scripts/turntime_cli.py init
+turntime init
 ```
 
 This will:
@@ -60,7 +67,7 @@ This will:
 ### 2. Sync your stats
 
 ```bash
-python3 scripts/turntime_cli.py sync
+turntime sync
 ```
 
 This parses your logs, generates a histogram SVG and badge data, and pushes everything to your Gist.
@@ -77,11 +84,15 @@ Add these placeholder comments to your GitHub profile `README.md`:
 <!-- /turntime histogram -->
 ```
 
-The `sync` command will fill these in with your actual stats.
+Then run `turntime sync` — it will fill these in with your actual badges and histogram.
 
-### 4. Automate with cron (local)
+### 4. Automate updates
 
-Add to your crontab to sync every 6 hours:
+**macOS (launchd):**
+
+Create `~/Library/LaunchAgents/com.turntime.sync.plist` to sync every 6 hours. See the repo wiki for a ready-to-use plist template.
+
+**Any platform (cron):**
 
 ```bash
 crontab -e
@@ -91,30 +102,34 @@ crontab -e
 0 */6 * * * cd /path/to/turntime && python3 scripts/turntime_cli.py sync 2>/dev/null
 ```
 
+> **Note:** For cron/launchd, store your GitHub token in `~/.config/turntime/.env` as `GH_TOKEN=<token>` and source it in your wrapper script. The `gh auth token` command may not work in non-interactive shells due to keychain access.
+
 ### 5. Automate with GitHub Actions (optional)
 
-If you commit your `turntime-stats.json` to your profile repo, you can use the included GitHub Action to regenerate the histogram and update your README daily:
+If you commit `turntime-stats.json` to your profile repo, you can add a GitHub Action to regenerate the histogram and update badges daily — even when your machine is off:
 
 1. Copy `.github/workflows/update-stats.yml` to your profile repo
-2. Add `TURNTIME_GIST_ID` as a repository secret
-3. The action runs daily at 6am UTC (customizable)
+2. Add these repository secrets:
+   - `TURNTIME_GIST_ID` — your Gist ID (from `~/.config/turntime/config.json`)
+   - `TURNTIME_GIST_TOKEN` — a [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) with **Gists** (read/write) and **Contents** (read/write) permissions
+3. The action runs daily at 6am UTC and supports manual dispatch
 
 ## CLI reference
 
 ```bash
 # Show stats in terminal
-python3 turntime.py stats
-python3 turntime.py stats --project myproject    # filter by project name
+turntime stats
+turntime stats --project myproject    # filter by project name
 
 # Generate files locally without pushing
-python3 turntime.py sync --local-only
-python3 turntime.py sync --local-only --period week --theme dark
+turntime sync --local-only
+turntime sync --local-only --period week --theme dark
 
 # Full sync: parse → generate → push to Gist → update README
-python3 turntime.py sync
+turntime sync
 
 # Initialize configuration
-python3 turntime.py init
+turntime init
 ```
 
 ### Individual scripts
@@ -142,10 +157,7 @@ Config is stored at `~/.config/turntime/config.json`:
   "profile_repo": "/Users/you/you",
   "histogram_period": "month",
   "badge_periods": ["month", "all"],
-  "theme": "auto",
-  "exclude_projects": [],
-  "max_turn_duration_seconds": 1800,
-  "min_turn_duration_seconds": 0.5
+  "theme": "auto"
 }
 ```
 
@@ -156,15 +168,12 @@ Config is stored at `~/.config/turntime/config.json`:
 | `histogram_period` | Period for histogram chart | `"month"` |
 | `badge_periods` | Which periods to show as badges | `["month", "all"]` |
 | `theme` | SVG theme: `auto`, `dark`, `light` | `"auto"` |
-| `exclude_projects` | Project names to skip | `[]` |
-| `max_turn_duration_seconds` | Max turn duration to include | `1800` |
-| `min_turn_duration_seconds` | Min turn duration to include | `0.5` |
 
 ## How it works
 
 1. **Reads** Claude Code session logs from `~/.claude/projects/**/*.jsonl`
 2. **Parses** each JSONL file to extract timestamped user/assistant message pairs
-3. **Calculates** turn duration as `assistant_final_timestamp - user_timestamp`
+3. **Calculates** turn duration as `last_assistant_timestamp - user_timestamp`
 4. **Aggregates** into time periods (day, week, month, quarter, year, all-time)
 5. **Generates** shields.io badge URLs and an SVG histogram chart
 6. **Pushes** to a GitHub Gist (for dynamic badge endpoints)
@@ -196,10 +205,10 @@ Badges use [shields.io](https://shields.io) and are color-coded by average durat
 
 ### Dynamic badges (recommended)
 
-If you use the Gist-based setup, your badges update automatically:
+Use the Gist endpoint for auto-updating badges:
 
 ```markdown
-![Turn Duration](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Trevor-Mengel/GIST_ID/raw/turntime-badge.json)
+![Turn Duration](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/YOUR_USER/GIST_ID/raw/turntime-badge.json)
 ```
 
 ### Static badges
@@ -227,21 +236,17 @@ The SVG histogram supports GitHub's automatic dark/light theme via `prefers-colo
 
 ## Roadmap
 
-- [ ] 🏆 Global and regional leaderboards
-- [ ] 🌐 Public website for leaderboard display
-- [ ] 📦 `pip install turntime` package distribution
-- [ ] 📊 Additional metrics (tokens/turn, tool uses/turn, complexity score)
-- [ ] 🔌 Claude Code hook integration for real-time tracking
-- [ ] 📈 Trend lines and rolling averages
-- [ ] 🏷️ Per-project breakdown charts
+- [ ] Global and regional leaderboards
+- [ ] Public website for leaderboard display
+- [ ] `pip install turntime` package distribution
+- [ ] Additional metrics (tokens/turn, tool uses/turn, complexity score)
+- [ ] Claude Code hook integration for real-time tracking
+- [ ] Trend lines and rolling averages
+- [ ] Per-project breakdown charts
 
 ## Contributing
 
-Contributions welcome! Areas where help is especially appreciated:
-- Leaderboard backend and frontend
-- Additional chart types and visualizations
-- Platform testing (Windows, Linux)
-- pip packaging
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 

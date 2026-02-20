@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""
-Generate shields.io badge URLs and markdown from turntime stats.
+"""Generate shields.io badge URLs and markdown from turntime stats.
 Supports both static badges and dynamic badges via GitHub Gist.
 """
+from __future__ import annotations
 
 import json
 import sys
@@ -137,8 +137,16 @@ def main():
     )
     args = parser.parse_args()
 
-    with open(args.input, 'r') as f:
-        data = json.load(f)
+    try:
+        with open(args.input, 'r') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"❌ Stats file not found: {args.input}", file=sys.stderr)
+        print("   Run `turntime sync --local-only` first to generate stats.", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in {args.input}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     badges = generate_all_badges(data)
 

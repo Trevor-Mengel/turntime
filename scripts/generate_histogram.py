@@ -247,8 +247,16 @@ def main():
     args = parser.parse_args()
 
     # Load stats
-    with open(args.input, 'r') as f:
-        data = json.load(f)
+    try:
+        with open(args.input, 'r') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"❌ Stats file not found: {args.input}", file=sys.stderr)
+        print("   Run `turntime sync --local-only` first to generate stats.", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in {args.input}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     histogram = data.get('histogram', [])
     stats_all = data.get('stats', {})
