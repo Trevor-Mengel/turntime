@@ -49,6 +49,25 @@ def get_github_token() -> str:
     sys.exit(1)
 
 
+def get_github_username(token: str) -> str:
+    """Get the authenticated GitHub username."""
+    import urllib.request
+
+    req = urllib.request.Request(
+        'https://api.github.com/user',
+        headers={
+            'Authorization': f'token {token}',
+            'Accept': 'application/vnd.github.v3+json',
+        },
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+            return result['login']
+    except (urllib.error.HTTPError, KeyError):
+        return ''
+
+
 def create_or_update_gist(token: str, gist_id: str | None, files: dict[str, str],
                           description: str = "turntime stats") -> str:
     """Create or update a GitHub Gist. Returns the Gist ID."""
@@ -169,6 +188,14 @@ def cmd_init(args):
     # GitHub token
     token = get_github_token()
     print("✅ GitHub authentication OK\n")
+
+    # Get and store GitHub username (needed for Gist raw URLs)
+    username = get_github_username(token)
+    if username:
+        config['github_username'] = username
+        print(f"✅ GitHub user: {username}\n")
+    else:
+        print("⚠️  Could not determine GitHub username. Gist raw URLs may not work.\n")
 
     # Create initial Gist
     print("📌 Creating stats Gist...")
@@ -313,7 +340,14 @@ def cmd_sync(args):
     profile_repo = config.get('profile_repo')
     if profile_repo:
         readme_path = Path(profile_repo) / 'README.md'
-        gist_raw = f"https://gist.githubusercontent.com/raw/{gist_id}/turntime-histogram.svg"
+        # Gist raw URLs require the username: gist.githubusercontent.com/{user}/{id}/raw/{file}
+        github_user = config.get('github_username') or get_github_username(token)
+        if github_user:
+            gist_raw = f"https://gist.githubusercontent.com/{github_user}/{gist_id}/raw/turntime-histogram.svg"
+        else:
+            # Fallback: use the Gist API to get the raw URL
+            print("⚠️  GitHub username not configured. Run `turntime init` to fix.")
+            gist_raw = f"https://gist.githubusercontent.com/raw/{gist_id}/turntime-histogram.svg"
         if update_profile_readme(readme_path, badges_md, gist_raw_url=gist_raw):
             print(f"📝 Updated {readme_path}")
             # Git commit & push
