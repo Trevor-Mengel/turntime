@@ -316,38 +316,17 @@ def cmd_sync(args):
     endpoint_json = generate_badge_json(period_stats)
 
     # Build text dashboard for pinned Gist display (plain text, no markdown)
-    def _build_gist_dashboard() -> str:
-        avg = format_duration(period_stats.get('avg_seconds', 0))
-        median = format_duration(period_stats.get('median_seconds', 0))
-        p90 = format_duration(period_stats.get('p90_seconds', 0))
-        count = period_stats.get('count', 0)
-        label = period_labels.get(histogram_period, histogram_period)
-
-        # Group histogram bins into 4 broad categories
-        groups = [
-            ('< 1 min', 0, 60),
-            ('1 - 5 min', 60, 300),
-            ('5 - 20 min', 300, 1200),
-            ('> 20 min', 1200, float('inf')),
-        ]
-        group_counts = []
-        for name, lo, hi in groups:
-            total = sum(
-                d['count'] for d in histogram_data
-                if d.get('lo', 0) >= lo and d.get('lo', 0) < hi
-            )
-            group_counts.append((name, total))
-
-        max_ct = max((c for _, c in group_counts), default=1) or 1
-        bar_w = 25
-        lines = [f"Avg: {avg}  Median: {median}  P90: {p90}  ({count} turns)"]
-        for name, ct in group_counts:
-            filled = round((ct / max_ct) * bar_w)
-            bar = '\u2588' * filled + '\u2591' * (bar_w - filled)
-            lines.append(f"{name:<11} {bar} {ct:>3}")
-        return '\n'.join(lines) + '\n'
-
-    gist_dashboard = _build_gist_dashboard()
+    # Shows weekly average vs the 45s global median across all Claude Code users
+    GLOBAL_MEDIAN_SECONDS = 45
+    week_stats = stats.get('week', {})
+    week_avg = week_stats.get('avg_seconds', 0)
+    week_avg_fmt = format_duration(week_avg)
+    if week_avg > 0:
+        pct = ((week_avg - GLOBAL_MEDIAN_SECONDS) / GLOBAL_MEDIAN_SECONDS) * 100
+        arrow = '\u2191' if pct > 0 else '\u2193'
+        gist_dashboard = f"{week_avg_fmt} avg  {arrow}{abs(pct):.0f}%\n"
+    else:
+        gist_dashboard = "no data\n"
 
     # Save locally
     output_dir = Path(args.output_dir or '.turntime-output')
@@ -374,7 +353,6 @@ def cmd_sync(args):
         'turntime-stats.json': json.dumps(output, indent=2),
         'turntime-histogram.svg': svg,
         'turntime-shield.json': json.dumps(endpoint_json, indent=2),
-        'README.md': None,  # Remove markdown; plain text dashboard is the pin display
     }
 
     gist_id = create_or_update_gist(
