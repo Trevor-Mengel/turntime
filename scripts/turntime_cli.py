@@ -221,8 +221,6 @@ def cmd_init(args):
     if profile_repo:
         config['profile_repo'] = str(Path(profile_repo).expanduser().resolve())
 
-    # Histogram period preference
-    config.setdefault('histogram_period', 'month')
     config.setdefault('badge_periods', ['week', 'all'])
 
     save_config(config)
@@ -290,7 +288,7 @@ def cmd_sync(args):
         histogram_data=histogram_data,
         stats=period_stats,
         period_label='Last 12 Weeks',
-        theme=args.theme or 'dark',
+        theme=args.theme or config.get('theme', 'dark'),
     )
 
     # Generate badges (pass config for customization)
@@ -450,7 +448,6 @@ def main():
     sync_parser.add_argument('--project', type=str, default=None)
     sync_parser.add_argument('--config', type=str, default=None)
     sync_parser.add_argument('--output-dir', type=str, default=None)
-    sync_parser.add_argument('--period', type=str, default=None)
     sync_parser.add_argument('--theme', choices=['auto', 'dark', 'light'], default=None)
     sync_parser.add_argument('--badge-periods', nargs='+', default=None)
     sync_parser.add_argument('--local-only', action='store_true',
