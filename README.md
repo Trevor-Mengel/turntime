@@ -419,7 +419,7 @@ The `gh auth token` command requires keychain access, which doesn't work in non-
 
 ## Roadmap
 
-- [ ] Global and regional leaderboards (we know you want this)
+- [ ] Global and regional leaderboards W(^,^)W
 - [ ] Public website for leaderboard display
 - [ ] `pip install turntime` package distribution
 - [ ] Additional metrics (tokens/turn, tool uses/turn, complexity score)
