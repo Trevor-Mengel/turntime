@@ -11,12 +11,13 @@
 ║          ║  /_/    /___/   /_/  /_/  /_____/
 ╚══════════╩═══════════════════════════════════╝
 ```
+## TURN DURATION IS THE NEW FLEX FOR AI PROGRAMMERS. WHERE DO YOU STACK UP?
 
 **Track and display your Claude Code turn duration on your GitHub profile.**
 
 Anthropic's research shows that the top 0.1% of Claude Code users have average turn durations [nearly double](https://www.anthropic.com/research/agent-autonomy) everyone else's — and climbing. These are the power users tackling the most complex, ambitious work: the kind where Claude reads dozens of files, orchestrates multi-step tool chains, runs tests, refactors, and delivers — all in a single turn. Turn duration is one of the clearest signals of how much autonomy you're granting your agent, and how hard the problems you're throwing at it actually are.
 
-turntime makes that visible. It parses your local Claude Code session logs, calculates your turn durations, and generates badges and histogram charts you can display on your GitHub profile — because if you're going to let an AI work unsupervised for 20 minutes, you might as well get credit for it.
+turntime makes that visible. It parses your local Claude Code session logs, calculates your turn durations, and generates badges and histogram charts you can display on your GitHub profile — because if you're going to let an AI work unsupervised for 30 minutes, you might as well get props for it.
 
 <picture>
   <img src="assets/example-histogram.svg" alt="Example turn duration histogram" />
