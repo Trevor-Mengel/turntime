@@ -51,7 +51,7 @@ python3 scripts/turntime_cli.py sync --local-only
 ls -la .turntime-output/
 ```
 
-If your changes affect the histogram, open `.turntime-output/turntime-histogram.svg` in a browser to verify it renders correctly. If your changes affect badges, check `.turntime-output/turntime-badges.md`.
+If your changes affect the histogram, open `.turntime-output/turntime-histogram.svg` in a browser to verify it renders correctly. For the distribution chart, use `--chart-type both` and check `.turntime-output/turntime-distribution.svg`. If your changes affect badges, check `.turntime-output/turntime-badges.md`.
 
 ## Guidelines
 

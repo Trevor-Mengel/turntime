@@ -19,12 +19,16 @@ python3 scripts/turntime_cli.py init
 # Generate stats locally without pushing
 python3 scripts/turntime_cli.py sync --local-only
 
+# Generate both chart types locally
+python3 scripts/turntime_cli.py sync --local-only --chart-type both
+
 # Full sync (parse → generate → push to Gist → update profile README)
 python3 scripts/turntime_cli.py sync
 
 # Run individual scripts directly
 python3 scripts/parse_sessions.py --output stats.json --verbose
 python3 scripts/generate_histogram.py stats.json --output histogram.svg --theme auto
+python3 scripts/generate_histogram.py stats.json --chart-type distribution --output dist.svg
 python3 scripts/generate_badges.py stats.json --format markdown
 
 # Test against fixture data (no real Claude logs needed)
@@ -41,7 +45,7 @@ There is no linter, formatter, or test runner configured.
 
 - **turntime_cli.py** — CLI entry point with three subcommands: `init`, `sync`, `stats`. Handles GitHub auth (via `gh` CLI or `GITHUB_TOKEN`/`GH_TOKEN` env vars), Gist CRUD, and profile README injection between comment markers.
 - **parse_sessions.py** — Parses JSONL session files from `~/.claude/projects/`. Core data structures are `Turn` and `TurnStats` dataclasses. A "turn" spans from a genuine user prompt to the final assistant response, including intermediate tool-use cycles. Tool results (role=user with tool_result content) are NOT turn boundaries. Turns under 5 seconds are filtered out. Aggregates into periods: today, week, month, quarter, year, all-time.
-- **generate_histogram.py** — Produces responsive SVG with `prefers-color-scheme` media query for GitHub dark/light themes. Renders a 12-week time-series chart showing average turn duration per week.
+- **generate_histogram.py** — Produces responsive SVG with `prefers-color-scheme` media query for GitHub dark/light themes. `generate_histogram_svg()` renders a 12-week time-series chart; `generate_distribution_svg()` renders a frequency distribution chart bucketed by duration range. Standalone CLI supports `--chart-type` flag.
 - **generate_badges.py** — Generates shields.io URLs with a Tailwind-inspired color scale based on duration tiers. Supports dynamic badges via Gist endpoints.
 
 ### Entry points
@@ -51,7 +55,7 @@ There is no linter, formatter, or test runner configured.
 
 ### Configuration
 
-Stored at `~/.config/turntime/config.json`. See `config.example.json` for the schema. Key options: `gist_id`, `profile_repo`, `badge_periods`, `theme`.
+Stored at `~/.config/turntime/config.json`. See `config.example.json` for the schema. Key options: `gist_id`, `profile_repo`, `badge_periods`, `theme`, `chart_type`.
 
 ## Conventions
 

@@ -10,6 +10,13 @@
 - Stats header in histogram uses all-time stats instead of period-specific stats
 
 ### Added
+- Frequency distribution chart type showing turn counts bucketed by duration range (<1 min, 1–2 min, 2–5 min, 5–10 min, 10–20 min, 20+ min)
+- `--chart-type` flag for `turntime sync` (`timeseries`, `distribution`, `both`) and `generate_histogram.py`
+- `chart_type` config option (defaults to `timeseries` for backward compatibility)
+- `build_distribution_data()` function in `parse_sessions.py`
+- `generate_distribution_svg()` function in `generate_histogram.py`
+- `<!-- turntime distribution -->` comment markers for profile README injection
+- `distribution` key in JSON stats output
 - `sync-cron.sh` — reusable cron/launchd wrapper script for automated syncing
 - Beginner-friendly setup guide for creating and configuring a GitHub profile repo
 - Troubleshooting section in README
