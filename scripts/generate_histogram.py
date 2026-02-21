@@ -222,7 +222,7 @@ def generate_histogram_svg(
 def generate_distribution_svg(
     distribution_data: list[dict],
     stats: dict,
-    period_label: str = "All Time",
+    period_label: str = "Last 30 Days",
     theme: str = "auto",
     width: int = 840,
     height: int = 320,
@@ -439,7 +439,7 @@ def main():
         svg = generate_distribution_svg(
             distribution_data=distribution,
             stats=stats,
-            period_label='All Time',
+            period_label='Last 30 Days',
             theme=args.theme,
             width=args.width,
             height=args.height,

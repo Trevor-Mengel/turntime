@@ -352,11 +352,21 @@ DISTRIBUTION_BUCKETS = [
 ]
 
 
-def build_distribution_data(turns: list[Turn]) -> list[dict]:
+def build_distribution_data(turns: list[Turn], days: int | None = 30,
+                            now: datetime | None = None) -> list[dict]:
     """Build frequency distribution data bucketed by duration range.
+
+    When *days* is set, only turns within the last N days are included.
+    Pass ``days=None`` for all-time.
 
     Returns a list of dicts with keys: bin, count, lower_seconds, upper_seconds.
     """
+    if days is not None:
+        if now is None:
+            now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=days)
+        turns = [t for t in turns if (_parse_ts(t.user_timestamp) or cutoff) >= cutoff]
+
     counts = [0] * len(DISTRIBUTION_BUCKETS)
     for turn in turns:
         d = turn.duration_seconds
@@ -503,7 +513,7 @@ def main():
         output['histogram'] = build_histogram_data(all_turns, num_weeks=args.num_weeks, now=now)
 
     if args.format == 'full':
-        output['distribution'] = build_distribution_data(all_turns)
+        output['distribution'] = build_distribution_data(all_turns, days=30, now=now)
 
     # Output
     json_str = json.dumps(output, indent=2, default=str)
