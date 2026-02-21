@@ -342,6 +342,41 @@ def aggregate_turns(turns: list[Turn], now: Optional[datetime] = None) -> dict:
     return {k: v.to_dict() for k, v in periods.items()}
 
 
+DISTRIBUTION_BUCKETS = [
+    (0,    60,   "<1 min"),
+    (60,   120,  "1–2 min"),
+    (120,  300,  "2–5 min"),
+    (300,  600,  "5–10 min"),
+    (600,  1200, "10–20 min"),
+    (1200, None, "20+ min"),
+]
+
+
+def build_distribution_data(turns: list[Turn]) -> list[dict]:
+    """Build frequency distribution data bucketed by duration range.
+
+    Returns a list of dicts with keys: bin, count, lower_seconds, upper_seconds.
+    """
+    counts = [0] * len(DISTRIBUTION_BUCKETS)
+    for turn in turns:
+        d = turn.duration_seconds
+        for i, (lower, upper, _label) in enumerate(DISTRIBUTION_BUCKETS):
+            if upper is None or d < upper:
+                if d >= lower:
+                    counts[i] += 1
+                    break
+
+    result = []
+    for i, (lower, upper, label) in enumerate(DISTRIBUTION_BUCKETS):
+        result.append({
+            'bin': label,
+            'count': counts[i],
+            'lower_seconds': lower,
+            'upper_seconds': upper,
+        })
+    return result
+
+
 def build_histogram_data(turns: list[Turn], num_weeks: int = 12,
                          now: Optional[datetime] = None) -> list[dict]:
     """Build weekly time-series data for chart generation.
@@ -466,6 +501,9 @@ def main():
 
     if args.format in ('histogram', 'full'):
         output['histogram'] = build_histogram_data(all_turns, num_weeks=args.num_weeks, now=now)
+
+    if args.format == 'full':
+        output['distribution'] = build_distribution_data(all_turns)
 
     # Output
     json_str = json.dumps(output, indent=2, default=str)

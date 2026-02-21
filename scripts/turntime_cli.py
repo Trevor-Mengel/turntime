@@ -22,8 +22,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from parse_sessions import find_claude_dir, find_session_files, parse_session_file, aggregate_turns, build_histogram_data
-from generate_histogram import generate_histogram_svg
+from parse_sessions import find_claude_dir, find_session_files, parse_session_file, aggregate_turns, build_histogram_data, build_distribution_data
+from generate_histogram import generate_histogram_svg, generate_distribution_svg
 from generate_badges import generate_all_badges, generate_badge_json, format_duration
 
 
@@ -121,8 +121,9 @@ def update_profile_readme(
     readme_path: Path,
     badges_md: str,
     histogram_url: str | None = None,
+    distribution_url: str | None = None,
 ):
-    """Update a profile README with turntime badges and histogram."""
+    """Update a profile README with turntime badges, histogram, and distribution chart."""
     if not readme_path.exists():
         print(f"⚠️  README not found at {readme_path}")
         return False
@@ -149,6 +150,19 @@ def update_profile_readme(
             content = re.sub(hist_pattern, histogram_md, content, flags=re.DOTALL)
         else:
             content += f'\n\n{histogram_md}\n'
+
+    # Replace distribution section
+    if distribution_url:
+        distribution_md = (
+            f'<!-- turntime distribution -->\n'
+            f'<img src="{distribution_url}" alt="Claude Code Turn Duration Distribution" width="840" />\n'
+            f'<!-- /turntime distribution -->'
+        )
+        dist_pattern = r'<!-- turntime distribution -->.*?<!-- /turntime distribution -->'
+        if re.search(dist_pattern, content, re.DOTALL):
+            content = re.sub(dist_pattern, distribution_md, content, flags=re.DOTALL)
+        else:
+            content += f'\n\n{distribution_md}\n'
 
     readme_path.write_text(content)
     return True
@@ -233,6 +247,9 @@ def cmd_init(args):
     print("")
     print("<!-- turntime histogram -->")
     print("<!-- /turntime histogram -->")
+    print("")
+    print("<!-- turntime distribution -->")
+    print("<!-- /turntime distribution -->")
     print("```")
 
 
@@ -268,28 +285,47 @@ def cmd_sync(args):
 
     print(f"✅ Extracted {len(all_turns)} turns")
 
+    # Resolve chart_type: CLI arg > config > default
+    chart_type = getattr(args, 'chart_type', None) or config.get('chart_type', 'timeseries')
+
     # Generate stats
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     stats = aggregate_turns(all_turns, now)
     histogram_data = build_histogram_data(all_turns, num_weeks=12, now=now)
+    distribution_data = build_distribution_data(all_turns)
 
-    # Build full output
+    # Build full output (always include both data sets — they're cheap)
     output = {
         'generated_at': now.isoformat(),
         'version': '1.0.0',
         'stats': stats,
         'histogram': histogram_data,
+        'distribution': distribution_data,
     }
 
-    # Generate SVG (always last 12 weeks, stats from 'all' period)
+    # Generate SVGs based on chart_type
     period_stats = stats.get('all', {})
-    svg = generate_histogram_svg(
-        histogram_data=histogram_data,
-        stats=period_stats,
-        period_label='Last 12 Weeks',
-        theme=args.theme or config.get('theme', 'dark'),
-    )
+    theme = args.theme or config.get('theme', 'dark')
+
+    histogram_svg = None
+    distribution_svg = None
+
+    if chart_type in ('timeseries', 'both'):
+        histogram_svg = generate_histogram_svg(
+            histogram_data=histogram_data,
+            stats=period_stats,
+            period_label='Last 12 Weeks',
+            theme=theme,
+        )
+
+    if chart_type in ('distribution', 'both'):
+        distribution_svg = generate_distribution_svg(
+            distribution_data=distribution_data,
+            stats=period_stats,
+            period_label='All Time',
+            theme=theme,
+        )
 
     # Generate badges (pass config for customization)
     badges = generate_all_badges(output, config)
@@ -326,7 +362,10 @@ def cmd_sync(args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     (output_dir / 'turntime-stats.json').write_text(json.dumps(output, indent=2))
-    (output_dir / 'turntime-histogram.svg').write_text(svg)
+    if histogram_svg:
+        (output_dir / 'turntime-histogram.svg').write_text(histogram_svg)
+    if distribution_svg:
+        (output_dir / 'turntime-distribution.svg').write_text(distribution_svg)
     (output_dir / 'turntime-shield.json').write_text(json.dumps(endpoint_json, indent=2))
     (output_dir / 'turntime-badges.md').write_text(badges_md)
     print(f"💾 Local output saved to {output_dir}/")
@@ -344,7 +383,8 @@ def cmd_sync(args):
     gist_files: dict[str, str | None] = {
         'dashboard': gist_dashboard,
         'turntime-stats.json': json.dumps(output, indent=2),
-        'turntime-histogram.svg': svg,
+        'turntime-histogram.svg': histogram_svg,
+        'turntime-distribution.svg': distribution_svg,
         'turntime-shield.json': json.dumps(endpoint_json, indent=2),
     }
 
@@ -360,16 +400,29 @@ def cmd_sync(args):
     profile_repo = config.get('profile_repo')
     if profile_repo:
         readme_path = Path(profile_repo) / 'README.md'
-        # Copy SVG directly into profile repo (avoids GitHub camo proxy caching issues)
-        svg_dest = Path(profile_repo) / 'turntime-histogram.svg'
-        svg_dest.write_text(svg)
-        # Use absolute raw URL so GitHub renders the SVG reliably
-        histogram_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/main/turntime-histogram.svg"
-        if update_profile_readme(readme_path, badges_md, histogram_url=histogram_url):
+        git_add_files = ['README.md']
+
+        # Copy histogram SVG into profile repo if generated
+        histogram_url = None
+        if histogram_svg:
+            svg_dest = Path(profile_repo) / 'turntime-histogram.svg'
+            svg_dest.write_text(histogram_svg)
+            histogram_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/main/turntime-histogram.svg"
+            git_add_files.append('turntime-histogram.svg')
+
+        # Copy distribution SVG into profile repo if generated
+        distribution_url = None
+        if distribution_svg:
+            svg_dest = Path(profile_repo) / 'turntime-distribution.svg'
+            svg_dest.write_text(distribution_svg)
+            distribution_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/main/turntime-distribution.svg"
+            git_add_files.append('turntime-distribution.svg')
+
+        if update_profile_readme(readme_path, badges_md, histogram_url=histogram_url, distribution_url=distribution_url):
             print(f"📝 Updated {readme_path}")
             # Git commit & push
             try:
-                run_cmd(['git', '-C', profile_repo, 'add', 'README.md', 'turntime-histogram.svg'])
+                run_cmd(['git', '-C', profile_repo, 'add'] + git_add_files)
                 run_cmd(['git', '-C', profile_repo, 'commit', '-m',
                          f'chore: update turntime stats ({now.strftime("%Y-%m-%d")})'],
                         check=False)
@@ -453,6 +506,9 @@ def main():
     sync_parser.add_argument('--output-dir', type=str, default=None)
     sync_parser.add_argument('--theme', choices=['auto', 'dark', 'light'], default=None)
     sync_parser.add_argument('--badge-periods', nargs='+', default=None)
+    sync_parser.add_argument('--chart-type', choices=['timeseries', 'distribution', 'both'],
+                             default=None,
+                             help='Chart type to generate (default: timeseries). Options: timeseries, distribution, both')
     sync_parser.add_argument('--local-only', action='store_true',
                              help='Generate files locally without pushing to GitHub')
 

@@ -7,5 +7,6 @@
   "badge_style": "for-the-badge",
   "badge_delta": true,
   "badge_delta_baseline": "all",
-  "theme": "auto"
+  "theme": "auto",
+  "chart_type": "timeseries"
 }
