@@ -11,7 +11,9 @@
 ║          ║  /_/    /___/   /_/  /_/  /_____/
 ╚══════════╩═══════════════════════════════════╝
 ```
-## TURN DURATION IS THE NEW FLEX FOR AI PROGRAMMERS. WHERE DO YOU STACK UP?
+## TURN DURATION IS THE NEW FLEX FOR AI PROGRAMMERS. 
+
+## WHERE DO YOU STACK UP?
 
 **Track and display your Claude Code turn duration on your GitHub profile.**
 
