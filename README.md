@@ -19,6 +19,12 @@ Anthropic's research shows that the top 0.1% of Claude Code users have average t
 
 turntime makes that visible. It parses your local Claude Code session logs, calculates your turn durations, and generates badges and histogram charts you can display on your GitHub profile — because if you're going to let an AI work unsupervised for 30 minutes, you might as well get props for it.
 
+![⏱ This Week](https://img.shields.io/badge/%E2%8F%B1%20This%20Week-6.5mins-14b8a6?style=for-the-badge) ![⏱ All Time](https://img.shields.io/badge/%E2%8F%B1%20All%20Time-6.7mins-14b8a6?style=for-the-badge)
+
+<picture>
+  <img src="assets/example-distribution.svg" alt="Example turn duration distribution" />
+</picture>
+
 <picture>
   <img src="assets/example-histogram.svg" alt="Example turn duration histogram" />
 </picture>
