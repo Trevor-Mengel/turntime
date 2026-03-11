@@ -185,6 +185,28 @@ def generate_all_badges(data: dict, config: dict | None = None) -> dict:
             'endpoint_json': generate_badge_json(period_stats),
         }
 
+    # All-time high badge (max turn duration ever recorded)
+    all_stats = stats.get('all', {})
+    max_seconds = all_stats.get('max_seconds', 0)
+    if max_seconds > 0:
+        max_label = "⏱ All-Time High"
+        max_value = format_duration(max_seconds)
+        max_color = duration_color(max_seconds)
+        max_url = generate_static_badge(max_label, max_value, max_color)
+        if style != 'for-the-badge':
+            max_url = max_url.replace('style=for-the-badge', f'style={quote(style)}')
+        badges['all_time_high'] = {
+            'url': max_url,
+            'markdown': f'![{max_label}]({max_url})',
+            'avg': max_value,
+            'metric': 'max',
+            'metric_value': max_value,
+            'delta': '',
+            'count': all_stats.get('count', 0),
+            'color': max_color,
+            'endpoint_json': {},
+        }
+
     return badges
 
 

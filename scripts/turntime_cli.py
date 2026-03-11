@@ -138,6 +138,19 @@ def update_profile_readme(
         # Append if not found
         content += f'\n\n{badges_md}\n'
 
+    # Replace distribution section (shown first, above histogram)
+    if distribution_url:
+        distribution_md = (
+            f'<!-- turntime distribution -->\n'
+            f'<img src="{distribution_url}" alt="Claude Code Turn Duration Distribution" width="840" />\n'
+            f'<!-- /turntime distribution -->'
+        )
+        dist_pattern = r'<!-- turntime distribution -->.*?<!-- /turntime distribution -->'
+        if re.search(dist_pattern, content, re.DOTALL):
+            content = re.sub(dist_pattern, distribution_md, content, flags=re.DOTALL)
+        else:
+            content += f'\n\n<br>\n\n{distribution_md}\n'
+
     # Replace histogram section
     if histogram_url:
         histogram_md = (
@@ -149,20 +162,7 @@ def update_profile_readme(
         if re.search(hist_pattern, content, re.DOTALL):
             content = re.sub(hist_pattern, histogram_md, content, flags=re.DOTALL)
         else:
-            content += f'\n\n{histogram_md}\n'
-
-    # Replace distribution section
-    if distribution_url:
-        distribution_md = (
-            f'<!-- turntime distribution -->\n'
-            f'<img src="{distribution_url}" alt="Claude Code Turn Duration Distribution" width="840" />\n'
-            f'<!-- /turntime distribution -->'
-        )
-        dist_pattern = r'<!-- turntime distribution -->.*?<!-- /turntime distribution -->'
-        if re.search(dist_pattern, content, re.DOTALL):
-            content = re.sub(dist_pattern, distribution_md, content, flags=re.DOTALL)
-        else:
-            content += f'\n\n{distribution_md}\n'
+            content += f'\n\n<br>\n\n{histogram_md}\n'
 
     readme_path.write_text(content)
     return True
@@ -332,6 +332,10 @@ def cmd_sync(args):
     badge_periods = args.badge_periods or config.get('badge_periods', ['week', 'all'])
     badge_md_lines = ["<!-- turntime badges -->"]
     badge_md_lines.append("Want to share your stats for Claude Code? [Get TurnTime here.](https://github.com/Trevor-Mengel/turntime)")
+    if 'all_time_high' in badges:
+        badge_md_lines.append("### All-Time High (Claude Code)")
+        badge_md_lines.append(badges['all_time_high']['markdown'])
+        badge_md_lines.append("")
     badge_md_lines.append("### Avg. Turn Duration (Claude Code)")
     for p in badge_periods:
         if p in badges:
