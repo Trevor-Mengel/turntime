@@ -423,11 +423,22 @@ def cmd_sync(args):
             # Git commit & push
             try:
                 run_cmd(['git', '-C', profile_repo, 'add'] + git_add_files)
-                run_cmd(['git', '-C', profile_repo, 'commit', '-m',
-                         f'chore: update turntime stats ({now.strftime("%Y-%m-%d")})'],
-                        check=False)
-                run_cmd(['git', '-C', profile_repo, 'push'], check=False)
-                print("🚀 Pushed to profile repo")
+                commit_result = run_cmd(
+                    ['git', '-C', profile_repo, 'commit', '-m',
+                     f'chore: update turntime stats ({now.strftime("%Y-%m-%d")})'],
+                    check=False)
+                if commit_result.returncode != 0:
+                    if 'nothing to commit' in (commit_result.stdout or ''):
+                        print("ℹ️  No changes to commit")
+                    else:
+                        print(f"⚠️  Git commit failed: {commit_result.stderr or commit_result.stdout}")
+                else:
+                    push_result = run_cmd(['git', '-C', profile_repo, 'push'], check=False)
+                    if push_result.returncode != 0:
+                        print(f"⚠️  Push failed: {push_result.stderr or push_result.stdout}")
+                        print("   Try: git -C {profile_repo} pull --rebase && git push")
+                    else:
+                        print("🚀 Pushed to profile repo")
             except Exception as e:
                 print(f"⚠️  Could not push: {e}")
 

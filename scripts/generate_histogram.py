@@ -74,7 +74,12 @@ def generate_histogram_svg(
     if not histogram_data:
         histogram_data = [{'bin': 'No data', 'avg_seconds': 0, 'count': 0}]
 
-    max_avg = max(d.get('avg_seconds', 0) for d in histogram_data) or 1
+    # Ensure all entries have avg_seconds (older stats files may lack this field)
+    for d in histogram_data:
+        if 'avg_seconds' not in d:
+            d['avg_seconds'] = 0
+
+    max_avg = max(d['avg_seconds'] for d in histogram_data) or 1
     n_bins = len(histogram_data)
     bar_gap = 4
     bar_width = max(12, (chart_w - bar_gap * (n_bins - 1)) / n_bins)
