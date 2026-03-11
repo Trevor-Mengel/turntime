@@ -400,29 +400,45 @@ def cmd_sync(args):
     profile_repo = config.get('profile_repo')
     if profile_repo:
         readme_path = Path(profile_repo) / 'README.md'
-        git_add_files = ['README.md']
+        svg_files = []
 
         # Copy histogram SVG into profile repo if generated
-        histogram_url = None
         if histogram_svg:
             svg_dest = Path(profile_repo) / 'turntime-histogram.svg'
             svg_dest.write_text(histogram_svg)
-            histogram_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/main/turntime-histogram.svg"
-            git_add_files.append('turntime-histogram.svg')
+            svg_files.append('turntime-histogram.svg')
 
         # Copy distribution SVG into profile repo if generated
-        distribution_url = None
         if distribution_svg:
             svg_dest = Path(profile_repo) / 'turntime-distribution.svg'
             svg_dest.write_text(distribution_svg)
-            distribution_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/main/turntime-distribution.svg"
-            git_add_files.append('turntime-distribution.svg')
+            svg_files.append('turntime-distribution.svg')
 
-        if update_profile_readme(readme_path, badges_md, histogram_url=histogram_url, distribution_url=distribution_url):
-            print(f"📝 Updated {readme_path}")
-            # Git commit & push
-            try:
-                run_cmd(['git', '-C', profile_repo, 'add'] + git_add_files)
+        try:
+            # Step 1: Commit SVGs first to get a commit SHA
+            if svg_files:
+                run_cmd(['git', '-C', profile_repo, 'add'] + svg_files)
+                run_cmd(
+                    ['git', '-C', profile_repo, 'commit', '-m',
+                     f'chore: update turntime charts ({now.strftime("%Y-%m-%d")})'],
+                    check=False)
+
+            # Step 2: Get the commit SHA for cache-busting image URLs
+            sha_result = run_cmd(['git', '-C', profile_repo, 'rev-parse', '--short', 'HEAD'])
+            commit_sha = sha_result.stdout.strip()
+
+            # Use commit SHA in URLs to bust GitHub's camo image proxy cache
+            histogram_url = None
+            if histogram_svg:
+                histogram_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/{commit_sha}/turntime-histogram.svg"
+            distribution_url = None
+            if distribution_svg:
+                distribution_url = f"https://raw.githubusercontent.com/{github_user}/{github_user}/{commit_sha}/turntime-distribution.svg"
+
+            # Step 3: Update README with SHA-based URLs and commit
+            if update_profile_readme(readme_path, badges_md, histogram_url=histogram_url, distribution_url=distribution_url):
+                print(f"📝 Updated {readme_path}")
+                run_cmd(['git', '-C', profile_repo, 'add', 'README.md'])
                 commit_result = run_cmd(
                     ['git', '-C', profile_repo, 'commit', '-m',
                      f'chore: update turntime stats ({now.strftime("%Y-%m-%d")})'],
@@ -432,15 +448,16 @@ def cmd_sync(args):
                         print("ℹ️  No changes to commit")
                     else:
                         print(f"⚠️  Git commit failed: {commit_result.stderr or commit_result.stdout}")
-                else:
-                    push_result = run_cmd(['git', '-C', profile_repo, 'push'], check=False)
-                    if push_result.returncode != 0:
-                        print(f"⚠️  Push failed: {push_result.stderr or push_result.stdout}")
-                        print("   Try: git -C {profile_repo} pull --rebase && git push")
-                    else:
-                        print("🚀 Pushed to profile repo")
-            except Exception as e:
-                print(f"⚠️  Could not push: {e}")
+
+            # Step 4: Push
+            push_result = run_cmd(['git', '-C', profile_repo, 'push'], check=False)
+            if push_result.returncode != 0:
+                print(f"⚠️  Push failed: {push_result.stderr or push_result.stdout}")
+                print(f"   Try: git -C {profile_repo} pull --rebase && git push")
+            else:
+                print("🚀 Pushed to profile repo")
+        except Exception as e:
+            print(f"⚠️  Could not push: {e}")
 
     # Print summary
     period_labels = {
