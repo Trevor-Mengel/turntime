@@ -9,10 +9,10 @@
 - GitHub Actions workflow recommendation from README (the Action operated on stale data and caused push divergence that silently broke syncing)
 
 ### Changed
-- Histogram redesigned from duration-distribution bins to a 12-week time-series chart showing average turn duration per week
+- Histogram redesigned from duration-distribution bins to a daily time-series chart showing average turn duration per day (last 30 days)
 - Duration formatting changed from "m" to "mins" (e.g., "6.8mins" instead of "6.8m")
 - Badge section now includes "Avg. Turn Duration (Claude Code)" title, a link to the TurnTime repo, and a link to Anthropic's research on agent autonomy
-- `build_histogram_data()` now accepts `num_weeks` parameter instead of `period`
+- `build_histogram_data()` now accepts `num_days` parameter (default 30); `num_weeks` still accepted for backward compatibility
 - Stats header in histogram uses all-time stats instead of period-specific stats
 
 ### Added
@@ -31,7 +31,7 @@
 - launchd plist template inline in README
 
 ### Removed
-- `--period` flag from `turntime sync` (histogram always shows last 12 weeks)
+- `--period` flag from `turntime sync` (histogram always shows last 30 days)
 - `--histogram-period` flag from `parse_sessions.py` (replaced by `--num-weeks`)
 - `histogram_period`, `exclude_projects`, `max_turn_duration_seconds`, `min_turn_duration_seconds` config keys (were never implemented)
 

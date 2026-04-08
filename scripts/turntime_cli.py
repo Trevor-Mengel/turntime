@@ -292,7 +292,7 @@ def cmd_sync(args):
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     stats = aggregate_turns(all_turns, now)
-    histogram_data = build_histogram_data(all_turns, num_weeks=12, now=now)
+    histogram_data = build_histogram_data(all_turns, num_days=30, now=now)
     distribution_data = build_distribution_data(all_turns, days=30, now=now)
 
     # Build full output (always include both data sets — they're cheap)
@@ -315,7 +315,7 @@ def cmd_sync(args):
         histogram_svg = generate_histogram_svg(
             histogram_data=histogram_data,
             stats=period_stats,
-            period_label='Last 12 Weeks',
+            period_label='Last 30 Days',
             theme=theme,
         )
 

@@ -387,34 +387,39 @@ def build_distribution_data(turns: list[Turn], days: int | None = 30,
     return result
 
 
-def build_histogram_data(turns: list[Turn], num_weeks: int = 12,
-                         now: Optional[datetime] = None) -> list[dict]:
-    """Build weekly time-series data for chart generation.
+def build_histogram_data(turns: list[Turn], num_days: int = 30,
+                         now: Optional[datetime] = None,
+                         num_weeks: int | None = None) -> list[dict]:
+    """Build daily time-series data for chart generation.
 
-    Groups turns by ISO week (Monday-start) and computes the average
-    duration for each of the last ``num_weeks`` weeks.  Weeks with no
+    Groups turns by calendar day (UTC) and computes the average
+    duration for each of the last ``num_days`` days.  Days with no
     turns are included with avg_seconds=0 so the chart always shows
     the full range.
+
+    The ``num_weeks`` parameter is accepted for backward compatibility
+    and converted to days (num_weeks * 7).
     """
     if now is None:
         now = datetime.now(timezone.utc)
 
-    # Monday of the current week (start of day, UTC)
+    if num_weeks is not None:
+        num_days = num_weeks * 7
+
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    current_week_start = today_start - timedelta(days=now.weekday())
 
-    # Build list of week-start Mondays (oldest first)
-    week_starts: list[datetime] = []
-    for i in range(num_weeks - 1, -1, -1):
-        week_starts.append(current_week_start - timedelta(weeks=i))
+    # Build list of day starts (oldest first)
+    day_starts: list[datetime] = []
+    for i in range(num_days - 1, -1, -1):
+        day_starts.append(today_start - timedelta(days=i))
 
-    # Bucket turns into weeks
-    week_durations: dict[str, list[float]] = {}
-    for ws in week_starts:
-        key = ws.strftime('%Y-%m-%d')
-        week_durations[key] = []
+    # Bucket turns into days
+    day_durations: dict[str, list[float]] = {}
+    for ds in day_starts:
+        key = ds.strftime('%Y-%m-%d')
+        day_durations[key] = []
 
-    cutoff = week_starts[0]
+    cutoff = day_starts[0]
     for t in turns:
         ts = _parse_ts(t.user_timestamp)
         if ts is None:
@@ -423,21 +428,18 @@ def build_histogram_data(turns: list[Turn], num_weeks: int = 12,
             ts = ts.replace(tzinfo=timezone.utc)
         if ts < cutoff:
             continue
-        # Find which week this turn belongs to
-        turn_week_start = ts - timedelta(days=ts.weekday())
-        turn_week_start = turn_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        key = turn_week_start.strftime('%Y-%m-%d')
-        if key in week_durations:
-            week_durations[key].append(t.duration_seconds)
+        turn_day = ts.replace(hour=0, minute=0, second=0, microsecond=0)
+        key = turn_day.strftime('%Y-%m-%d')
+        if key in day_durations:
+            day_durations[key].append(t.duration_seconds)
 
     # Build result list
     result = []
-    for ws in week_starts:
-        key = ws.strftime('%Y-%m-%d')
-        durations = week_durations[key]
+    for ds in day_starts:
+        key = ds.strftime('%Y-%m-%d')
+        durations = day_durations[key]
         avg = sum(durations) / len(durations) if durations else 0
-        # Label: "Mon D" format (e.g. "Feb 3")
-        label = ws.strftime('%b %-d')
+        label = ds.strftime('%b %-d')
         result.append({
             'bin': label,
             'avg_seconds': round(avg, 1),
@@ -469,8 +471,12 @@ def main():
         help='Output format: stats, turns, histogram, or full (default: full)'
     )
     parser.add_argument(
-        '--num-weeks', type=int, default=12,
-        help='Number of weeks for histogram time-series (default: 12)'
+        '--num-days', type=int, default=30,
+        help='Number of days for histogram time-series (default: 30)'
+    )
+    parser.add_argument(
+        '--num-weeks', type=int, default=None,
+        help='(Deprecated) Number of weeks for histogram; converted to days'
     )
     parser.add_argument(
         '--verbose', '-v', action='store_true',
@@ -510,7 +516,7 @@ def main():
         output['recent_turns'] = [asdict(t) for t in recent]
 
     if args.format in ('histogram', 'full'):
-        output['histogram'] = build_histogram_data(all_turns, num_weeks=args.num_weeks, now=now)
+        output['histogram'] = build_histogram_data(all_turns, num_days=args.num_days, now=now, num_weeks=args.num_weeks)
 
     if args.format == 'full':
         output['distribution'] = build_distribution_data(all_turns, days=30, now=now)

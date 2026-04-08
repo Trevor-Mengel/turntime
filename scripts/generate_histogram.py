@@ -56,7 +56,7 @@ def _xml_escape(text: str) -> str:
 def generate_histogram_svg(
     histogram_data: list[dict],
     stats: dict,
-    period_label: str = "Last 12 Weeks",
+    period_label: str = "Last 30 Days",
     theme: str = "auto",
     width: int = 840,
     height: int = 320,
@@ -116,22 +116,25 @@ def generate_histogram_svg(
                     f'<title>{_xml_escape(d["bin"])}: {avg_fmt} avg ({d["count"]} turns)</title>'
                     f'</rect>'
                 )
-                # Duration label above bar
-                bars.append(
-                    f'<text x="{x + bar_width / 2:.1f}" y="{y - 6:.1f}" '
-                    f'text-anchor="middle" fill="{colors["text_secondary"]}" '
-                    f'font-size="10" font-family="ui-monospace,monospace">'
-                    f'{avg_fmt}</text>'
-                )
+                # Duration label above bar (only show for bars wide enough)
+                if bar_width >= 30:
+                    bars.append(
+                        f'<text x="{x + bar_width / 2:.1f}" y="{y - 6:.1f}" '
+                        f'text-anchor="middle" fill="{colors["text_secondary"]}" '
+                        f'font-size="10" font-family="ui-monospace,monospace">'
+                        f'{avg_fmt}</text>'
+                    )
 
-            # X-axis label
-            labels.append(
-                f'<text x="{x + bar_width / 2:.1f}" '
-                f'y="{margin_top + chart_h + 20:.1f}" '
-                f'text-anchor="middle" fill="{colors["text_secondary"]}" '
-                f'font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">'
-                f'{_xml_escape(d["bin"])}</text>'
-            )
+            # X-axis labels: show every Nth label to avoid overlap
+            label_every = max(1, n_bins // 6)
+            if i % label_every == 0 or i == n_bins - 1:
+                labels.append(
+                    f'<text x="{x + bar_width / 2:.1f}" '
+                    f'y="{margin_top + chart_h + 20:.1f}" '
+                    f'text-anchor="middle" fill="{colors["text_secondary"]}" '
+                    f'font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">'
+                    f'{_xml_escape(d["bin"])}</text>'
+                )
 
         # Y-axis grid lines with duration labels
         grid_lines = []
@@ -454,7 +457,7 @@ def main():
         svg = generate_histogram_svg(
             histogram_data=histogram,
             stats=stats,
-            period_label='Last 12 Weeks',
+            period_label='Last 30 Days',
             theme=args.theme,
             width=args.width,
             height=args.height,

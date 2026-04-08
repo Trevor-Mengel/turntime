@@ -321,7 +321,7 @@ Config is stored at `~/.config/turntime/config.json`:
 2. **Parses** each JSONL file to extract timestamped messages, distinguishing genuine human prompts from tool_result messages (which share `role: "user"` in the Claude API)
 3. **Calculates** turn duration from your prompt to Claude's final response, spanning all intermediate tool-use cycles
 4. **Aggregates** into time periods (day, week, month, quarter, year, all-time)
-5. **Generates** shields.io badge URLs, a weekly time-series histogram, and an optional frequency distribution chart
+5. **Generates** shields.io badge URLs, a daily time-series histogram (last 30 days), and an optional frequency distribution chart
 6. **Pushes** to a GitHub Gist (for dynamic badge endpoints)
 7. **Updates** your profile README with badge images and the histogram
 
