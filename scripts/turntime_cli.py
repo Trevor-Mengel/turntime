@@ -453,7 +453,14 @@ def cmd_sync(args):
                     else:
                         print(f"⚠️  Git commit failed: {commit_result.stderr or commit_result.stdout}")
 
-            # Step 4: Push
+            # Step 4: Pull with rebase (in case remote has diverged), then push
+            pull_result = run_cmd(
+                ['git', '-C', profile_repo, 'pull', '--rebase', '--autostash'],
+                check=False)
+            if pull_result.returncode != 0:
+                print(f"⚠️  Pull --rebase failed: {pull_result.stderr or pull_result.stdout}")
+                print(f"   Try manually: git -C {profile_repo} pull --rebase && git push")
+
             push_result = run_cmd(['git', '-C', profile_repo, 'push'], check=False)
             if push_result.returncode != 0:
                 print(f"⚠️  Push failed: {push_result.stderr or push_result.stdout}")

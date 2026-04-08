@@ -210,31 +210,15 @@ A ready-to-use wrapper script is included at [`sync-cron.sh`](sync-cron.sh). It 
    launchctl load ~/Library/LaunchAgents/com.turntime.sync.plist
    ```
 
-### 8. Automate with GitHub Actions (optional)
+### 8. Why not GitHub Actions?
 
-If you want stats to update even when your machine is off, you can use a GitHub Action. This requires committing `turntime-stats.json` to your profile repo first.
+You might be tempted to add a GitHub Action that regenerates charts on a schedule. We tried this and recommend against it. The Action can only work with a `turntime-stats.json` snapshot committed to your profile repo — it can't parse your local Claude Code session logs. This means:
 
-**Setup:**
+- The Action regenerates charts from **stale data** that never updates unless you manually push a new `turntime-stats.json`
+- If the Action pushes a commit, it **diverges** from your local branch, causing every subsequent `turntime sync` push to silently fail
+- You end up with a month of local commits that never reach GitHub, wondering why your charts stopped updating
 
-1. Generate and commit the stats file to your profile repo:
-   ```bash
-   turntime sync --local-only
-   cp .turntime-output/turntime-stats.json ~/YOUR_USERNAME/
-   cd ~/YOUR_USERNAME
-   git add turntime-stats.json && git commit -m "add turntime stats" && git push
-   ```
-
-2. Copy the workflow file from this repo to your profile repo:
-   ```bash
-   mkdir -p ~/YOUR_USERNAME/.github/workflows
-   cp /path/to/turntime/Trevor-Mengel/.github/workflows/update-stats.yml ~/YOUR_USERNAME/.github/workflows/
-   ```
-
-3. Add these repository secrets (Settings > Secrets and variables > Actions):
-   - `TURNTIME_GIST_ID` — your Gist ID (find it in `~/.config/turntime/config.json`)
-   - `TURNTIME_GIST_TOKEN` — a [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) with **Gists** (read/write) and **Contents** (read/write) permissions
-
-4. The action runs daily at 6am UTC. You can also trigger it manually from the Actions tab.
+Use local automation (cron or launchd, step 7 above) instead. It parses fresh session logs every time and is the source of truth for your stats.
 
 ## CLI reference
 
@@ -419,6 +403,9 @@ Your Gist ID is invalid. Run `turntime init` again to create a new Gist, or chec
 
 **Badges or histogram not appearing on profile**
 Make sure your profile README has the comment markers (`<!-- turntime badges -->` ... `<!-- /turntime badges -->`) and that you ran `turntime sync` (not just `--local-only`). Check that your profile repo was pushed: `cd ~/YOUR_USERNAME && git status`.
+
+**Charts stopped updating / profile repo ahead of origin**
+If `git status` in your profile repo shows "Your branch is ahead of origin/main by N commits", something pushed a commit to the remote that your local branch doesn't have (a GitHub Action, a web edit, another machine, etc.). The sync script now auto-rebases before pushing, but if you hit this with an older version: `git -C ~/YOUR_USERNAME pull --rebase && git push`.
 
 **Cron/launchd sync not working**
 The `gh auth token` command requires keychain access, which doesn't work in non-interactive shells. Store your token in `~/.config/turntime/.env` as `GH_TOKEN=your_token` and use the included `sync-cron.sh` wrapper script.

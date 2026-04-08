@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- Sync now runs `git pull --rebase --autostash` before pushing to the profile repo, preventing silent push failures when the remote has diverged
+
+### Removed
+- GitHub Actions workflow recommendation from README (the Action operated on stale data and caused push divergence that silently broke syncing)
+
 ### Changed
 - Histogram redesigned from duration-distribution bins to a 12-week time-series chart showing average turn duration per week
 - Duration formatting changed from "m" to "mins" (e.g., "6.8mins" instead of "6.8m")
@@ -40,4 +46,3 @@
 - Update profile README with badge and histogram injection
 - CLI with `init`, `sync`, and `stats` subcommands
 - `setup.sh` one-liner installer
-- GitHub Actions workflow for daily automated updates
